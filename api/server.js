@@ -7,7 +7,7 @@ const reviewRoute = require("./routes/review.route") ;
 const messageRoute = require("./routes/message.route") ;
 const gigRoute = require("./routes/gig.route") ;
 const authRoute = require("./routes/auth.route") ;
-
+const cookieParser = require("cookie-parser") ;
 
 
 
@@ -18,7 +18,9 @@ dotenv = require('dotenv');
 
 const app = express(); 
 app.use(express.json());
+app.use(cookieParser());
 dotenv.config() ;
+
 
 
 const connect = async()=>
@@ -32,7 +34,16 @@ const connect = async()=>
  
 
 app.use("/api/auth", authRoute);
+app.use("/api/users" , userRoute) ;
 
+
+
+app.use((err , req , res , next)=>
+{
+  const errorStatus = err.status || 500 ; 
+  const errorMessage = err.message || "something wen wrong" ; 
+  return res.status(errorStatus).send(errorMessage) ; 
+})
 
 
 
