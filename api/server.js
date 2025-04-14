@@ -1,5 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
+dotenv = require('dotenv');
+const cors = require('cors');
 const userRoute = require("./routes/user.route")
 const orderRoute = require("./routes/order.route") ;
 const converstationRoute = require("./routes/conversation.route.js") ;
@@ -11,14 +13,17 @@ const cookieParser = require("cookie-parser") ;
 
 
 
-dotenv = require('dotenv');
-
 
 
 
 const app = express(); 
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:5174'], // Allow both origins
+  credentials: true, // Allow cookies to be sent
+}));
 app.use(express.json());
 app.use(cookieParser());
+
 dotenv.config() ;
 
 
