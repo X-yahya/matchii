@@ -1,0 +1,28 @@
+export const categories = [
+    { title: 'Website Development', image: 'https://picsum.photos/200' },
+    { title: 'Logo Design', image: 'https://picsum.photos/200' },
+    { title: 'SEO', image: 'https://picsum.photos/200' },
+    { title: 'Architecture', image: 'https://picsum.photos/200' },
+    { title: 'Website Development', image: 'https://picsum.photos/200' },
+    { title: 'Logo Design', image: 'https://picsum.photos/200' },
+    { title: 'SEO', image: 'https://picsum.photos/200' },
+    { title: 'Architecture', image: 'https://picsum.photos/200' },
+    { title: 'Website Development', image: 'https://picsum.photos/200' },
+    { title: 'Logo Design', image: 'https://picsum.photos/200' },
+    { title: 'SEO', image: 'https://picsum.photos/200' },
+    { title: 'Architecture', image: 'https://picsum.photos/200' },
+    { title: 'Website Development', image: 'https://picsum.photos/200' },
+    { title: 'Logo Design', image: 'https://picsum.photos/200' },
+    { title: 'SEO', image: 'https://picsum.photos/200' },
+    { title: 'Architecture', image: 'https://picsum.photos/200' },
+    { title: 'Website Development', image: 'https://picsum.photos/200' },
+    { title: 'Logo Design', image: 'https://picsum.photos/200' },
+    { title: 'SEO', image: 'https://picsum.photos/200' },
+    { title: 'Architecture', image: 'https://picsum.photos/200' },
+    { title: 'Website Development', image: 'https://picsum.photos/200' },
+    { title: 'Logo Design', image: 'https://picsum.photos/200' },
+    { title: 'SEO', image: 'https://picsum.photos/200' },
+    { title: 'Architecture', URL: 'https://picsum.photos/200' },
+    
+  ];
+
