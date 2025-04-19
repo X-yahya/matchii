@@ -22,7 +22,7 @@ const Slide = ({ categories }) => {
       <div className="flex justify-between absolute inset-y-0 w-full -translate-y-1/2 top-1/2 z-10">
         <button
           onClick={() => scroll('left')}
-          className="h-12 w-12 rounded-full bg-white shadow-lg hover:shadow-xl -translate-x-12 flex items-center justify-center transition-all hover:scale-105"
+          className="h-12 w-12 rounded-full bg-white shadow-lg hover:shadow-xl -translate-x-15 flex items-center justify-center transition-all hover:scale-105"
         >
           <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -46,11 +46,13 @@ const Slide = ({ categories }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        {categories?.map((category, index) => (
+        {categories?.map((category) => (
           <CatCard
-            key={index}
-            category={category}
-            items={category?.items || []}
+            key={category.id} // Use id as the key
+            id={category.id} // Pass id to CatCard
+            title={category.title} // Pass title to CatCard
+            desc={category.desc} // Pass description to CatCard
+            image={category.image} // Pass image to CatCard
           />
         ))}
       </motion.div>
