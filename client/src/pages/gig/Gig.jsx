@@ -27,7 +27,7 @@ export default function Gig() {
                 Level 1 Seller
               </span>
               <div className="flex items-center gap-1">
-                <span className="text-yellow-400 text-lg">★</span> {/* Replaced StarIcon */}
+                <span className="text-yellow-400 text-lg">★</span>
                 <span className="text-gray-600">{selectedGig.star}</span>
               </div>
             </div>
@@ -56,8 +56,9 @@ export default function Gig() {
           </div>
         </div>
 
-        {/* Features & Description */}
+        {/* Features & Description & Reviews */}
         <div className="space-y-8">
+          {/* About This Gig */}
           <div className="bg-white p-6 rounded-xl shadow-sm">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">About This Gig</h2>
             <p className="text-gray-600 leading-relaxed whitespace-pre-line">
@@ -65,6 +66,7 @@ export default function Gig() {
             </p>
           </div>
 
+          {/* What's Included */}
           <div className="bg-white p-6 rounded-xl shadow-sm">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">What's Included</h2>
             <ul className="space-y-3">
@@ -85,6 +87,60 @@ export default function Gig() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          {/* Reviews Section */}
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6">
+              Reviews ({selectedGig.reviews?.length || 0})
+            </h2>
+            <div className="space-y-6">
+              {selectedGig.reviews?.map((review) => (
+                <div key={review.id} className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={review.pp}
+                      alt="User"
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                    <div>
+                      <p className="font-medium text-gray-800">{review.username}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {[...Array(5)].map((_, i) => (
+                          <span
+                            key={i}
+                            className={`text-lg ${i < review.star ? 'text-yellow-400' : 'text-gray-300'}`}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <span className="text-gray-500 text-sm ml-auto">
+                      {review.date}
+                    </span>
+                  </div>
+                  <p className="text-gray-600">{review.desc}</p>
+                  <button className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
+                      />
+                    </svg>
+                    Helpful ({review.helpful || 0})
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

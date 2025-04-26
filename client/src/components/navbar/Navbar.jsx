@@ -1,17 +1,26 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef  } from "react";
+import { useNavigate } from "react-router-dom";
 import { Transition } from "@headlessui/react";
-
+import avatar from "../../assets/images/avatar.png"; // Default avatar image
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null); // Ref for the dropdown menu
+  const navigator = useNavigate() ;
+  const currentUser = JSON.parse( localStorage.getItem("currentUser" ) ) ;
 
-  const currentUser = {
-    id: 1,
-    username: "John Doe",
-    isSeller: true,
-  };
+  const handleLogout = async()=>
+  {
+    try {
+      await newRequest.post("/auth/logout") ;
+      localStorage.setItem("currentUser",null) ;
+      navigator("/")
+    }catch(err)
+    {
+
+    }
+  }
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -47,7 +56,7 @@ const Navbar = () => {
 
             <div className="hidden md:flex space-x-4 items-center">
               <a href="/co-koffee" className="text-gray-800 hover:text-gray-600 transition hover:scale-105 duration-300">
-                co-Koffee
+                collaboration
               </a>
               { !currentUser?.isSeller &&
               <a href="/login" className="text-gray-800 hover:text-gray-600 transition hover:scale-105 duration-300">
@@ -74,7 +83,7 @@ const Navbar = () => {
               {currentUser && (
                 <div className="relative flex items-center space-x-3" ref={dropdownRef}>
                   <img
-                    src="https://i.pravatar.cc/40"
+                    src={currentUser.img || avatar}
                     alt="Profile"
                     className="w-10 h-10 rounded-full border border-gray-300 shadow-sm cursor-pointer"
                     onClick={() => setOpen(!open)}
@@ -101,7 +110,7 @@ const Navbar = () => {
                       <a href="/messages" className="hover:text-blue-500 transition">
                         Messages
                       </a>
-                      <button className="text-left hover:text-red-500 transition">Logout</button>
+                      <button className="text-left hover:text-red-500 transition" onClick={handleLogout}>Logout</button>
                     </div>
                   )}
                 </div>

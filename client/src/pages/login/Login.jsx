@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { EyeIcon } from "@heroicons/react/solid";
 import newRequest from '../../utils/newRequest';
 function Login() {
   const [username, setUsername] = useState('');
@@ -8,7 +9,7 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [usernameFocused, setUsernameFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-
+  const [error, setError] = useState(null);
   const navigate = useNavigate() ; 
 
   const handleSubmit = async(e) => {
@@ -21,7 +22,7 @@ function Login() {
       navigate("/") ;
    }catch(err)
    {
-    console.log(err) ;
+    setError(err.response.data) ;
    }
   };
   return (
