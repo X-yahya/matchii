@@ -10,7 +10,7 @@ import Orders from "./pages/orders/Orders";
 import MyGigs from "./pages/myGigs/MyGig";
 import Add from "./pages/add/Add";
 import Messages from "./pages/messages/Messages";
-
+import Register from "./pages/register/Register";
 function App() {
   const Layout = () => {
     return (
@@ -64,6 +64,10 @@ function App() {
     {
       path: "/login",
       element: <Login />
+    },
+    {
+      path: "/register",
+      element: <Register />
     }
   ]);
 

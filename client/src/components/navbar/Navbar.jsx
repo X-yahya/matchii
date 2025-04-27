@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef  } from "react";
 import { useNavigate } from "react-router-dom";
 import { Transition } from "@headlessui/react";
 import avatar from "../../assets/images/avatar.png"; // Default avatar image
+import newRequest from "../../utils/newRequest"; // Adjust the import path as necessary
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -15,10 +16,10 @@ const Navbar = () => {
     try {
       await newRequest.post("/auth/logout") ;
       localStorage.setItem("currentUser",null) ;
-      navigator("/")
+      navigator("/login")
     }catch(err)
     {
-
+      console.log(err)
     }
   }
 
@@ -66,7 +67,7 @@ const Navbar = () => {
               {!currentUser?.isSeller && (
                 <>
                   <a
-                    href="/become-seller"
+                    href="/login"
                     className="text-gray-800 hover:text-gray-600 transition hover:scale-105 duration-300"
                   >
                     Become a Seller
@@ -74,6 +75,7 @@ const Navbar = () => {
                   <button
                     type="button"
                     className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full transition hover:scale-105 duration-300"
+                    onClick={() => navigator("/register")}
                   >
                     Join
                   </button>
@@ -110,7 +112,8 @@ const Navbar = () => {
                       <a href="/messages" className="hover:text-blue-500 transition">
                         Messages
                       </a>
-                      <button className="text-left hover:text-red-500 transition" onClick={handleLogout}>Logout</button>
+                      <button className="text-left hover:text-red-500 transition" onClick={handleLogout}>
+                      Logout</button>
                     </div>
                   )}
                 </div>
