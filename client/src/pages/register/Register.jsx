@@ -1,10 +1,13 @@
 import React, { useState } from "react";
-import Select from "react-select";
-import countryFlagEmoji from "country-flag-icons/emojione";
+import upload from "../../utils/upload";
+import newRequest from "../../utils/newRequest";
+import { useNavigate } from "react-router-dom";
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
+  const [file, setFile] = useState(null);
+  const [user, setUser] = useState({
+    name: "", // Added name field
     username: "",
     email: "",
     password: "",
@@ -13,29 +16,45 @@ const Register = () => {
     img: "",
     desc: "",
     isSeller: false,
+    acceptedTerms: false,
   });
+  const [imgPreview, setImgPreview] = useState(null);
 
-  const countryOptions = [
-    { value: "US", label: "United States" },
-    { value: "GB", label: "United Kingdom" },
-    { value: "CA", label: "Canada" },
-    { value: "AU", label: "Australia" },
-    { value: "DE", label: "Germany" },
-    // Add more countries as needed
-  ];
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
+    console.log("Submitting user data:", user);
+
+    try {
+      const url = await upload(file);
+      const userData = { ...user, img: url };
+      console.log("Final payload:", userData);
+
+      await newRequest.post("auth/register", userData);
+      console.log("Registration successful");
+    } catch (err) {
+      console.error("Registration failed:", err);
+    }
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.type === "checkbox" 
-        ? e.target.checked 
-        : e.target.value,
-    });
+    const { name, value, type, checked } = e.target;
+    setUser((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImgPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+      setUser((prev) => ({ ...prev, img: file }));
+      setFile(file);
+    }
   };
 
   return (
@@ -46,13 +65,63 @@ const Register = () => {
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Profile Image Field */}
+          <div>
+            <label className="block text-gray-700 mb-2">Profile Image</label>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                {imgPreview ? (
+                  <img
+                    src={imgPreview}
+                    alt="Profile preview"
+                    className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center">
+                    <span className="text-gray-400 text-sm">Upload</span>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  name="img"
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                  id="profileImage"
+                  required
+                />
+              </div>
+              <label
+                htmlFor="profileImage"
+                className="cursor-pointer bg-blue-50 text-blue-600 px-4 py-2 rounded-full hover:bg-blue-100 transition-colors"
+              >
+                Choose Image
+              </label>
+            </div>
+          </div>
+
+          {/* Name Field */}
+          <div>
+            <label className="block text-gray-700 mb-2">Name</label>
+            <input
+              type="text"
+              name="name"
+              value={user.name}
+              onChange={handleChange}
+              className="w-full bg-gray-100 rounded-full px-4 py-3 text-gray-800 
+                focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"
+              placeholder="Enter your full name"
+              required
+            />
+          </div>
+
           {/* Username Field */}
           <div>
             <label className="block text-gray-700 mb-2">Username</label>
             <input
               type="text"
               name="username"
-              value={formData.username}
+              value={user.username}
               onChange={handleChange}
               className="w-full bg-gray-100 rounded-full px-4 py-3 text-gray-800 
                 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"
@@ -67,7 +136,7 @@ const Register = () => {
             <input
               type="email"
               name="email"
-              value={formData.email}
+              value={user.email}
               onChange={handleChange}
               className="w-full bg-gray-100 rounded-full px-4 py-3 text-gray-800 
                 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"
@@ -83,7 +152,7 @@ const Register = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
-                value={formData.password}
+                value={user.password}
                 onChange={handleChange}
                 className="w-full bg-gray-100 rounded-full px-4 py-3 text-gray-800 
                   focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 pr-12"
@@ -101,38 +170,17 @@ const Register = () => {
             </div>
           </div>
 
-          {/* Country Field with React Select */}
+          {/* Country Field */}
           <div>
             <label className="block text-gray-700 mb-2">Country</label>
-            <Select
-              options={countryOptions}
-              value={countryOptions.find(opt => opt.value === formData.country)}
-              onChange={(selected) => setFormData({...formData, country: selected.value})}
-              formatOptionLabel={({ value, label }) => (
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{countryFlagEmoji[value]}</span>
-                  {label}
-                </div>
-              )}
-              styles={{
-                control: (base) => ({
-                  ...base,
-                  borderRadius: '9999px',
-                  padding: '0.5rem 1rem',
-                  backgroundColor: '#f3f4f6',
-                  border: 'none',
-                  boxShadow: 'none',
-                  '&:hover': {
-                    borderColor: '#3b82f6'
-                  }
-                }),
-                option: (base) => ({
-                  ...base,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                })
-              }}
+            <input
+              type="text"
+              name="country"
+              value={user.country}
+              onChange={handleChange}
+              className="w-full bg-gray-100 rounded-full px-4 py-3 text-gray-800 
+                focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"
+              placeholder="Enter your country"
               required
             />
           </div>
@@ -143,7 +191,7 @@ const Register = () => {
             <input
               type="tel"
               name="phone"
-              value={formData.phone}
+              value={user.phone}
               onChange={handleChange}
               className="w-full bg-gray-100 rounded-full px-4 py-3 text-gray-800 
                 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"
@@ -153,27 +201,12 @@ const Register = () => {
             />
           </div>
 
-          {/* Profile Image Field */}
-          <div>
-            <label className="block text-gray-700 mb-2">Profile Image URL</label>
-            <input
-              type="url"
-              name="img"
-              value={formData.img}
-              onChange={handleChange}
-              className="w-full bg-gray-100 rounded-full px-4 py-3 text-gray-800 
-                focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"
-              placeholder="Enter image URL"
-              required
-            />
-          </div>
-
           {/* Description Field */}
           <div>
             <label className="block text-gray-700 mb-2">Description</label>
             <textarea
               name="desc"
-              value={formData.desc}
+              value={user.desc}
               onChange={handleChange}
               className="w-full bg-gray-100 rounded-lg px-4 py-3 text-gray-800 
                 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"
@@ -188,7 +221,7 @@ const Register = () => {
             <input
               type="checkbox"
               name="isSeller"
-              checked={formData.isSeller}
+              checked={user.isSeller}
               onChange={handleChange}
               className="h-5 w-5 text-blue-500 rounded focus:ring-blue-500 border-gray-300"
               id="sellerCheckbox"
@@ -202,9 +235,12 @@ const Register = () => {
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
+              name="acceptedTerms"
+              checked={user.acceptedTerms}
+              onChange={handleChange}
+              className="h-5 w-5 text-blue-500 rounded focus:ring-blue-500 border-gray-300"
               id="terms"
               required
-              className="h-5 w-5 text-blue-500 rounded focus:ring-blue-500 border-gray-300"
             />
             <label htmlFor="terms" className="text-gray-600 text-sm">
               I agree to the Terms of Service and Privacy Policy

@@ -7,7 +7,8 @@ const orderRoute = require("./routes/order.route") ;
 const converstationRoute = require("./routes/conversation.route.js") ;
 const reviewRoute = require("./routes/review.route") ;
 const messageRoute = require("./routes/message.route") ;
-const gigRoute = require("./routes/gig.route") ;
+const gigRoute = require("./routes/gig.route.js") ; 
+
 const authRoute = require("./routes/auth.route") ;
 const cookieParser = require("cookie-parser") ;
 
@@ -39,7 +40,8 @@ const connect = async()=>
  
 
 app.use("/api/auth", authRoute);
-app.use("/api/users" , userRoute) ;
+app.use("/api/users", userRoute);
+app.use("/api/gigs", gigRoute)
 
 
 

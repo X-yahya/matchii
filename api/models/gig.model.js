@@ -1,77 +1,82 @@
-const mongoose = require("mongoose") ; 
+const mongoose = require("mongoose");
 
 const { Schema } = mongoose;
 
-const gigSchema = new Schema({
-    userId : 
-    {
-        type : string , 
-        required : true ,
-    } , 
+const GigSchema = new Schema(
+  {
+    userId: {
+      type: String,
+      required: true,
+    },
     title: {
-        type: String,
-        required: true,
-        unique: false,
-        trim: true,
-    } , 
-    shortTitle : 
-    {
-        type: String,
-        required: true,
-        unique: false,
-        trim: true,
+      type: String,
+      required: true,
+      trim: true,
     },
-    description : {
-        type: String,
-        required: true
+    category: {
+      type: String,
+      required: true,
     },
-    deliveryTime: {
-        type: Number,
-        required: true,
+    description: {
+      type: String,
+      required: true,
     },
-    revisionNumber : {
-        type: Number,
-        required: true,
+    plans: [
+      {
+        name: {
+          type: String,
+          required: true,
+        },
+        price: {
+          type: Number,
+          required: true,
+        },
+        deliveryDays: {
+          type: Number,
+          required: true,
+        },
+        features: {
+          type: [String],
+          required: true,
+        },
+      },
+    ],
+    faq: [
+      {
+        question: {
+          type: String,
+          required: true,
+        },
+        answer: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
+    coverImage: {
+      type: String,
+      required: true,
     },
-    features : 
-    {
-        type : [String] ,
+    gallery: {
+      type: [String],
     },
-    totalStarts : {
-        type: Number,
-        // required: true,
-        
+    totalStars: {
+      type: Number,
+      default: 0,
     },
     starNumber: {
-        type: Number,
-    },
-    cat: {
-        type: String,
-        required: true,
-    },
-    price: {
-        type: Number,
-        required: true,
+      type: Number,
+      default: 0,
     },
     sales: {
-        type: Number,
-        default: 0,
+      type: Number,
+      default: 0,
     },
-    cover: {
-        type: string,
-        required : true , 
-    },
-    image: {
-        type: [string],
-        required : false , 
-    }
-}, { timestamps: true });
+  },
+  { timestamps: true }
+);
 
-
-
-
-
-module.exports = mongoose.model("Gig", gigSchema);
+module.exports = mongoose.model("Gig", GigSchema);
 
 
 
