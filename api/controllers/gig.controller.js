@@ -1,5 +1,5 @@
 const createError = require("../utils/createError"); ;
-const Gig = require("../models/gig.model") ;
+const Gig = require("../models/Gig.model"); ;
 
 const createGig = async (req, res, next) => {
   if (!req.isSeller)
@@ -34,18 +34,17 @@ const createGig = async (req, res, next) => {
 
 }
 
- const getGig = async (req , res , next) =>
-{
-  try{
-    const gig = await Gig.findById(req.params.id) ;
-    if(!gig) return next(createError(404 , "Gig not found")) ; 
-    res.status(200).send(gig) ; 
-  }catch(err)
-  {
-    console.log(err) ; 
-    next(err); 
+const getGig = async (req, res) => {
+  try {
+    const gig = await Gig.findById(req.params.id).populate('userId', 'username img level');
+    if (!gig) {
+      return res.status(404).json({ message: 'Gig not found' });
+    }
+    res.status(200).json(gig);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching gig', error: err.message });
   }
-}
+};
 
 const getGigs = async (req, res, next) => {
   const q = req.query;

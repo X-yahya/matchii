@@ -1,4 +1,9 @@
 import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from '@tanstack/react-query'
 import Login from "./pages/login/Login";
 import "./App.css";
 import Navbar from "./components/navbar/Navbar"; 
@@ -11,13 +16,20 @@ import MyGigs from "./pages/myGigs/MyGig";
 import Add from "./pages/add/Add";
 import Messages from "./pages/messages/Messages";
 import Register from "./pages/register/Register";
+
+
+
 function App() {
+  const queryClient = new QueryClient()
+
   const Layout = () => {
     return (
       <>
+        <QueryClientProvider client={queryClient}>
         <Navbar />
         <Outlet />
         <Footer />
+        </QueryClientProvider>
       </>
     );
   };

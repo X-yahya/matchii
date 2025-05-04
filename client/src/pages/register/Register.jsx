@@ -13,7 +13,7 @@ const Register = () => {
     password: "",
     country: "",
     phone: "",
-    img: "",
+    img: file,
     desc: "",
     isSeller: false,
     acceptedTerms: false,
@@ -31,6 +31,7 @@ const Register = () => {
 
       await newRequest.post("auth/register", userData);
       console.log("Registration successful");
+      navigate("/login")
     } catch (err) {
       console.error("Registration failed:", err);
     }
