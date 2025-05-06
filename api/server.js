@@ -12,11 +12,6 @@ const messageRoute = require("./routes/message.route") ;
 const cookieParser = require("cookie-parser") ;
 
 
-
-
-
-
-
 const app = express(); 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174'],
@@ -27,8 +22,6 @@ app.use(cookieParser());
 
 dotenv.config() ;
 
-
-
 const connect = async()=>
 {
     main().catch(err => console.log(err));
@@ -37,31 +30,16 @@ const connect = async()=>
       console.log('Connected to MongoDB ');
     }
 }
-
-mongoose.connection.on('connected', () => {
-  console.log('MongoDB connection established successfully.');
-});
-
-mongoose.connection.on('error', (err) => {
-  console.error('MongoDB connection error:', err);
-});
- 
-
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
 app.use("/api/gigs", gigRoute)
 app.use("/api/reviews", reviewRoute);
-
-
-
 app.use((err , req , res , next)=>
 {
   const errorStatus = err.status || 500 ; 
   const errorMessage = err.message || "something wen wrong" ; 
   return res.status(errorStatus).send(errorMessage) ; 
 })
-
-
 
 app.listen(3000, () => {
     connect();
