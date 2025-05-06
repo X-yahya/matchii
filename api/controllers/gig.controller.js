@@ -1,5 +1,6 @@
 const createError = require("../utils/createError"); ;
 const Gig = require("../models/Gig.model"); ;
+const User = require("../models/user.model");
 
 const createGig = async (req, res, next) => {
   if (!req.isSeller)
@@ -60,6 +61,9 @@ const getGigs = async (req, res, next) => {
     }),
   };
 
+  console.log("Filters applied:", filters);
+  console.log("Querying gigs for userId:", q.userId);
+
   try {
     // Fetch gigs based on filters
     const gigs = await Gig.find(filters);
@@ -70,4 +74,21 @@ const getGigs = async (req, res, next) => {
   }
 };
 
-module.exports = {createGig , deleteGig , getGig , getGigs} ;
+const getMyGigs = async (req, res, next) => {
+  try {
+    const gigs = await Gig.find({ userId: req.userId })
+      .populate({
+        path: 'userId',
+        select: 'name image isSeller', // Ensure these match your User model
+        model: 'User' // Explicitly reference the model
+      })
+      .lean(); // Convert to plain JS objects
+
+    console.log('Fetched gigs:', JSON.stringify(gigs, null, 2)); // Debug logging
+    res.status(200).json(gigs);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { createGig, deleteGig, getGig, getGigs, getMyGigs };

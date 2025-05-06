@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import upload from "../../utils/upload";
 import newRequest from "../../utils/newRequest";
 import { useNavigate } from "react-router-dom";
+import { Description } from "@headlessui/react";
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -19,19 +20,25 @@ const Register = () => {
     acceptedTerms: false,
   });
   const [imgPreview, setImgPreview] = useState(null);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log("Submitting user data:", user);
-
+  
     try {
       const url = await upload(file);
-      const userData = { ...user, img: url };
+      const userData = {
+        ...user,
+        image: url, 
+        description: user.desc,  
+      };
+  
+  
       console.log("Final payload:", userData);
-
       await newRequest.post("auth/register", userData);
       console.log("Registration successful");
-      navigate("/login")
+      navigate("/login");
     } catch (err) {
       console.error("Registration failed:", err);
     }

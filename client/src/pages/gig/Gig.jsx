@@ -45,7 +45,7 @@ export default function Gig() {
         {/* Seller Header */}
         <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
           <img
-            src={user?.img || '/default-seller.jpg'}
+            src={user?.image || '/default-seller.jpg'}
             alt="Seller"
             className="w-14 h-14 rounded-full object-cover border-2 border-blue-500"
           />

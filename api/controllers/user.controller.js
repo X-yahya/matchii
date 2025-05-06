@@ -31,4 +31,25 @@ const getUser = async (req, res) => {
   }
 };
 
-module.exports = { deleteUser, getUser };
+const uploadUserImage = async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) {
+      return res.status(400).json({ message: "No image provided" });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.image = image; // Save the Cloudinary URL
+    await user.save();
+
+    res.status(200).json({ message: "Profile picture updated successfully", image: user.image });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating profile picture" });
+  }
+};
+
+module.exports = { deleteUser, getUser, uploadUserImage };

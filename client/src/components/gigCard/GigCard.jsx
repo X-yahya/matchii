@@ -43,7 +43,7 @@ const GigCard = ({ item }) => {
           ) : data ? (
             <>
               <img
-                src={data.img || '/default-seller.jpg'}
+                src={data?.image ? data.image : '/default-seller.jpg'}
                 alt="Seller"
                 className="w-8 h-8 rounded-full object-cover"
               />

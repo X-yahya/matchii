@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import newRequest from '../../utils/newRequest';
+import { useNavigate } from 'react-router-dom';
 
 export default function Add() {
   const [gigData, setGigData] = useState({
@@ -6,11 +8,11 @@ export default function Add() {
     category: '',
     description: '',
     plans: [{ name: 'Basic', price: '', deliveryDays: '', features: [''] }],
-    features: [''],
     faq: [{ question: '', answer: '' }],
     coverImage: null,
     gallery: []
   });
+  const navigate = useNavigate();
 
   const handleInputChange = (section, field, value, index = null) => {
     if (index !== null) {
@@ -23,40 +25,59 @@ export default function Add() {
     }
   };
 
-  const addPlan = () => {
-    setGigData({
-      ...gigData,
-      plans: [...gigData.plans, { name: '', price: '', deliveryDays: '', features: [''] }]
-    });
-  };
+  const handleImageUpload = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'marketplace');
 
-  const addFeature = (planIndex) => {
-    const updatedPlans = gigData.plans.map((plan, i) => 
-      i === planIndex ? { ...plan, features: [...plan.features, ''] } : plan
-    );
-    setGigData({ ...gigData, plans: updatedPlans });
-  };
-
-  const addFAQ = () => {
-    setGigData({
-      ...gigData,
-      faq: [...gigData.faq, { question: '', answer: '' }]
-    });
-  };
-
-  const handleImageUpload = (e, type) => {
-    const files = Array.from(e.target.files);
-    if (type === 'cover') {
-      setGigData({ ...gigData, coverImage: files[0] });
-    } else {
-      setGigData({ ...gigData, gallery: [...gigData.gallery, ...files] });
+    try {
+      const response = await newRequest.post('https://api.cloudinary.com/v1_1/dddntqfyo/image/upload', formData, {
+        withCredentials: false, // Ensure credentials are not sent
+      });
+      return response.data.url;
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      return null;
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission
-    console.log(gigData);
+
+    try {
+      // Upload cover image to Cloudinary
+      const coverImageUrl = gigData.coverImage ? await handleImageUpload(gigData.coverImage) : null;
+
+      
+      const galleryUrls = await Promise.all(
+        gigData.gallery.map((file) => handleImageUpload(file))
+      );
+
+      // Ensure coverImage is provided
+      if (!coverImageUrl) {
+        alert("Cover image is required.");
+        return;
+      }
+
+      // Prepare payload
+      const payload = {
+        ...gigData,
+        coverImage: coverImageUrl,
+        gallery: galleryUrls,
+      };
+
+      // Send gig data to the backend
+      const response = await newRequest.post('/gigs', payload);
+      console.log('Gig created successfully:', response.data);
+      navigate('/mygigs');
+    } catch (error) {
+      console.error('Failed to create gig:', error);
+      alert('Failed to create gig. Please try again.');
+    }
+  };
+
+  const handleImagePreview = (file) => {
+    return URL.createObjectURL(file);
   };
 
   return (
@@ -168,7 +189,11 @@ export default function Add() {
                   ))}
                   <button
                     type="button"
-                    onClick={() => addFeature(index)}
+                    onClick={() => {
+                      const updatedPlans = [...gigData.plans];
+                      updatedPlans[index].features.push('');
+                      setGigData({ ...gigData, plans: updatedPlans });
+                    }}
                     className="mt-2 text-blue-500 hover:text-blue-600 text-sm"
                   >
                     + Add Feature
@@ -178,7 +203,12 @@ export default function Add() {
             ))}
             <button
               type="button"
-              onClick={addPlan}
+              onClick={() => {
+                setGigData({
+                  ...gigData,
+                  plans: [...gigData.plans, { name: '', price: '', deliveryDays: '', features: [''] }]
+                });
+              }}
               className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-gray-600 hover:border-gray-400"
             >
               + Add New Plan
@@ -196,7 +226,10 @@ export default function Add() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleImageUpload(e, 'cover')}
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    setGigData({ ...gigData, coverImage: file });
+                  }}
                   className="hidden"
                   id="cover-upload"
                 />
@@ -204,6 +237,13 @@ export default function Add() {
                   <p className="text-gray-600">Drag and drop or click to upload</p>
                   <p className="text-sm text-gray-500 mt-1">Recommended size: 1200x800px</p>
                 </label>
+                {gigData.coverImage && (
+                  <img
+                    src={handleImagePreview(gigData.coverImage)}
+                    alt="Cover Preview"
+                    className="mt-4 w-full h-auto rounded-lg"
+                  />
+                )}
               </div>
             </div>
 
@@ -214,7 +254,10 @@ export default function Add() {
                   type="file"
                   accept="image/*"
                   multiple
-                  onChange={(e) => handleImageUpload(e, 'gallery')}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    setGigData({ ...gigData, gallery: [...gigData.gallery, ...files] });
+                  }}
                   className="hidden"
                   id="gallery-upload"
                 />
@@ -222,6 +265,16 @@ export default function Add() {
                   <p className="text-gray-600">Drag and drop or click to upload</p>
                   <p className="text-sm text-gray-500 mt-1">Up to 5 images</p>
                 </label>
+                <div className="mt-4 grid grid-cols-2 gap-4">
+                  {gigData.gallery.map((file, index) => (
+                    <img
+                      key={index}
+                      src={handleImagePreview(file)}
+                      alt={`Gallery Preview ${index + 1}`}
+                      className="w-full h-auto rounded-lg"
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -258,7 +311,12 @@ export default function Add() {
             ))}
             <button
               type="button"
-              onClick={addFAQ}
+              onClick={() => {
+                setGigData({
+                  ...gigData,
+                  faq: [...gigData.faq, { question: '', answer: '' }]
+                });
+              }}
               className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-gray-600 hover:border-gray-400"
             >
               + Add FAQ

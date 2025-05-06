@@ -37,12 +37,21 @@ const connect = async()=>
       console.log('Connected to MongoDB ');
     }
 }
+
+mongoose.connection.on('connected', () => {
+  console.log('MongoDB connection established successfully.');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err);
+});
  
 
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
 app.use("/api/gigs", gigRoute)
 app.use("/api/reviews", reviewRoute);
+
 
 
 app.use((err , req , res , next)=>

@@ -1,152 +1,159 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import newRequest from '../../utils/newRequest';
 import { useState } from 'react';
 
 export default function MyGigs() {
-  const [currentUser] = useState({
-    role: 'seller', // Change to 'buyer' to test different views
-    name: 'JohnDoe',
-    pp: 'https://picsum.photos/50?random=user'
+  // Get authenticated user from localStorage
+  const [currentUser] = useState(JSON.parse(localStorage.getItem('currentUser')));
+  
+  // Fetch user-specific gigs from API
+  const { isLoading, error, data: myGigs } = useQuery({
+    queryKey: ['myGigs'],
+    queryFn: () => newRequest.get('/gigs/mygigs').then((res) => res.data),
+    enabled: !!currentUser?.isSeller
   });
 
-  // Sample data with both seller and buyer information
-  const myGigs = [
-    {
-      id: 1,
-      title: "Professional Web Design Service",
-      price: 299,
-      sales: 45,
-      status: "active",
-      seller: {
-        name: "DesignPro",
-        pp: "https://picsum.photos/50?random=1"
-      },
-      buyer: {
-        name: "Client123",
-        pp: "https://picsum.photos/50?random=5"
-      }
-    },
-    {
-      id: 2,
-      title: "Mobile App Development with React Native",
-      price: 599,
-      sales: 28,
-      status: "paused",
-      seller: {
-        name: "DevTeam",
-        pp: "https://picsum.photos/50?random=2"
-      },
-      buyer: {
-        name: "StartupXYZ",
-        pp: "https://picsum.photos/50?random=6"
-      }
-    },
-    {
-      id: 3,
-      title: "Logo Design and Branding Package",
-      price: 149,
-      sales: 63,
-      status: "active",
-      seller: {
-        name: "CreativeStudio",
-        pp: "https://picsum.photos/50?random=3"
-      },
-      buyer: {
-        name: "SmallBiz",
-        pp: "https://picsum.photos/50?random=7"
-      }
-    },
-  ];
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-4 max-w-md mx-auto mt-8 text-center">
+        <div className="text-red-500 font-medium mb-2">
+          Error loading gigs: {error.message}
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 mt-12">
-      {/* Page Header */}
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Gigs</h1>
-        {currentUser.role === 'seller' && (
-          <Link 
-            to="/create-gig"
-            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm md:text-base"
+    <div className="container mx-auto px-4 mt-16 py-12">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+        <h1 className="text-3xl font-bold text-gray-900">My Gigs</h1>
+        {currentUser?.isSeller && (
+          <Link
+            to="/add"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
           >
-            Create New Gig
+            + Create New Gig
           </Link>
         )}
       </div>
 
       {/* Gigs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {myGigs.map((gig) => (
-          <div key={gig.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full">
-            {/* Gig Image */}
-            <img
-              src={`https://picsum.photos/200?random=${gig.id}`}
-              alt="Gig cover"
-              className="w-full h-48 object-cover"
-            />
+      {myGigs?.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {myGigs.map((gig) => (
+            <div key={gig._id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+              {/* Gig Cover Image */}
+              <img
+                src={gig.coverImage || '/default-gig.jpg'}
+                alt={gig.title}
+                className="w-full h-48 object-cover rounded-t-xl"
+              />
 
-            {/* Gig Details */}
-            <div className="p-4 flex flex-col flex-1">
-              {/* User Info Section */}
-              <div className="flex items-center gap-2 mb-3">
-                <img
-                  src={currentUser.role === 'buyer' ? gig.seller.pp : gig.buyer.pp}
-                  alt="Profile"
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">
-                    {currentUser.role === 'buyer' ? gig.seller.name : gig.buyer.name}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {currentUser.role === 'buyer' ? 'Seller' : 'Buyer'}
-                  </p>
+              {/* Gig Details */}
+              <div className="p-5">
+                {/* Seller Info */}
+                <div className="flex items-center gap-3 mb-4">
+                  <img
+                    src={gig.userId?.image || '/default-avatar.png'}
+                    alt="Profile"
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">
+                      {gig.userId?.name || 'Unknown User'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {gig.userId?.isSeller ? 'Seller' : 'Buyer'}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Title and Status */}
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-medium text-gray-900 line-clamp-2">
-                  {gig.title}
-                </h3>
-                <span className={`text-sm px-2 py-1 rounded-full flex-shrink-0 ${
-                  gig.status === 'active' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {gig.status}
-                </span>
-              </div>
+                {/* Title and Status */}
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 truncate">
+                    {gig.title}
+                  </h3>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    gig.status === 'active' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {gig.status || 'draft'}
+                  </span>
+                </div>
 
-              {/* Price and Sales */}
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-xl font-bold text-gray-900">${gig.price}</p>
-                <p className="text-sm text-gray-600">{gig.sales} sales</p>
-              </div>
+                {/* Pricing and Sales */}
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <span className="text-xl font-bold text-gray-900">
+                      ${gig.plans?.[0]?.price || '0'}
+                    </span>
+                    <span className="text-sm text-gray-500 ml-1">starting price</span>
+                  </div>
+                  <div className="text-sm bg-gray-100 px-2 py-1 rounded">
+                    {gig.sales} sales
+                  </div>
+                </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2 mt-auto">
-                {currentUser.role === 'seller' ? (
-                  <>
-                    <button className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm">
+                {/* Action Buttons */}
+                {currentUser?.isSeller && (
+                  <div className="flex gap-3 mt-4">
+                    <Link
+                      to={`/edit-gig/${gig._id}`}
+                      className="flex-1 text-center bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
                       Edit
-                    </button>
-                    <button className={`flex-1 py-2 rounded-lg transition-colors text-sm ${
-                      gig.status === 'active'
-                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        : 'bg-green-100 text-green-800 hover:bg-green-200'
-                    }`}>
+                    </Link>
+                    <button className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors">
                       {gig.status === 'active' ? 'Pause' : 'Activate'}
                     </button>
-                  </>
-                ) : (
-                  <button className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm">
-                    View Order Details
-                  </button>
+                  </div>
                 )}
               </div>
             </div>
+          ))}
+        </div>
+      ) : (
+        // Empty State
+        <div className="text-center py-20">
+          <div className="mb-8 text-gray-500">
+            <svg className="mx-auto h-24 w-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <h3 className="mt-4 text-xl font-medium text-gray-900">No gigs found</h3>
+            <p className="mt-1 text-gray-500">Get started by creating a new gig.</p>
           </div>
-        ))}
-      </div>
+          {currentUser?.isSeller && (
+            <Link
+              to="/add"
+              className="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Create New Gig
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

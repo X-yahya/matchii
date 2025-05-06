@@ -132,7 +132,7 @@ function Login() {
           >
             <p className="text-apple-gray-800 text-sm">
               Don't have an Account ?{' '}
-              <a href="#" className="text-apple-blue hover:underline font-medium">
+              <a href="register" className="text-apple-blue hover:underline font-medium">
                 Create yours now
               </a>
             </p>

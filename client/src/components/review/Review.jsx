@@ -26,8 +26,8 @@ const Review = ({ review }) => {
             />
           ) : (
             <img
-              src={user?.img || "/img/noavatar.jpg"}
-              alt={user?.username}
+              src={user?.image ? user.image : "/img/noavatar.jpg"}
+              alt={user?.username || "User"}
               className="w-10 h-10 rounded-full object-cover"
             />
           )}

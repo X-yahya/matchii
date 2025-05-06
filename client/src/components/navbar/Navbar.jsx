@@ -59,12 +59,18 @@ const Navbar = () => {
               <a href="/co-koffee" className="text-gray-800 hover:text-gray-600 transition hover:scale-105 duration-300">
                 collaboration
               </a>
-              { !currentUser?.isSeller &&
-              <a href="/login" className="text-gray-800 hover:text-gray-600 transition hover:scale-105 duration-300">
-                Sign In
-              </a>}
+              {!currentUser?.isSeller && currentUser && (
+                <>
+                  <a
+                    href="/become-seller"
+                    className="text-gray-800 hover:text-gray-600 transition hover:scale-105 duration-300"
+                  >
+                    Become a Seller
+                  </a>
+                </>
+              )}
 
-              {!currentUser?.isSeller && (
+              {!currentUser?.isSeller && !currentUser && (
                 <>
                   <a
                     href="/login"
@@ -85,7 +91,7 @@ const Navbar = () => {
               {currentUser && (
                 <div className="relative flex items-center space-x-3" ref={dropdownRef}>
                   <img
-                    src={currentUser.img || avatar}
+                    src={currentUser.image ? currentUser.image : avatar}
                     alt="Profile"
                     className="w-10 h-10 rounded-full border border-gray-300 shadow-sm cursor-pointer"
                     onClick={() => setOpen(!open)}
