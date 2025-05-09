@@ -16,6 +16,9 @@ import MyGigs from "./pages/myGigs/MyGig";
 import Add from "./pages/add/Add";
 import Messages from "./pages/messages/Messages";
 import Register from "./pages/register/Register";
+import Profile from "./pages/profile/Profile";
+import VerifyEmail from "./pages/verification/VerifyOtp";
+import VerifyOtp from "./pages/verification/VerifyOtp";
 
 
 
@@ -71,6 +74,15 @@ function App() {
           path: "/message/:id",
           element: <Messages /> // Fix typo: "message" to "Messages"
         },
+        {
+          path: "/profile",
+          element: <Profile />
+        },
+        {
+          path: "/verify-otp",
+          element: <VerifyOtp />
+        },
+
       ]
     },
     {

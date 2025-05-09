@@ -1,7 +1,6 @@
-const createError = require("../utils/createError");
-
 User = require("../models/user.model") ; 
 jwt = require("jsonwebtoken") ; 
+const createError = require("../utils/createError");
 
 
 const deleteUser = async (req, res) => {
@@ -52,4 +51,37 @@ const uploadUserImage = async (req, res) => {
   }
 };
 
-module.exports = { deleteUser, getUser, uploadUserImage };
+const updateUser = async (req, res) => {
+  try {
+    const { username, description, country, phone, image, role, isSeller } = req.body;
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (req.userId !== user._id.toString()) {
+      return res.status(403).json({ message: "You can only update your own profile" });
+    }
+
+    user.username = username || user.username;
+    user.description = description || user.description;
+    user.country = country || user.country;
+    user.phone = phone || user.phone;
+    user.image = image || user.image;
+    user.role = role || user.role;
+    user.isSeller = isSeller !== undefined ? isSeller : user.isSeller;
+
+    if (role === "client") {
+      user.isSeller = false;
+    }
+
+    await user.save();
+
+    res.status(200).json({ message: "Profile updated successfully", user });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating profile", error: err.message });
+  }
+};
+
+module.exports = { deleteUser, getUser, uploadUserImage, updateUser };

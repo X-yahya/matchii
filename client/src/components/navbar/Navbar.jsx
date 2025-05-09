@@ -7,37 +7,40 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const dropdownRef = useRef(null); // Ref for the dropdown menu
-  const navigator = useNavigate() ;
-  const currentUser = JSON.parse( localStorage.getItem("currentUser" ) ) ;
-
-  const handleLogout = async()=>
-  {
-    try {
-      await newRequest.post("/auth/logout") ;
-      localStorage.setItem("currentUser",null) ;
-      navigator("/login")
-    }catch(err)
-    {
-      console.log(err)
-    }
-  }
+  const dropdownRef = useRef(null);
+  const navigator = useNavigate();
+  const [currentUser, setCurrentUser] = useState(() => {
+    const storedUser = localStorage.getItem("currentUser");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setOpen(false);
-      }
+    const handleStorageChange = () => {
+      const storedUser = localStorage.getItem("currentUser");
+      setCurrentUser(storedUser ? JSON.parse(storedUser) : null);
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("currentUser");
+    if (storedUser) {
+      setCurrentUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await newRequest.post("/auth/logout");
+      localStorage.removeItem("currentUser");
+      window.dispatchEvent(new Event('storage'));
+      navigator("/login");
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   return (
     <nav className={`fixed top-0 w-full z-50 transition-shadow duration-300 ${scrolled ? "shadow-md" : ""}`}>
@@ -52,8 +55,6 @@ const Navbar = () => {
                 Freelance
               </a>
             </div>
-
-
 
             <div className="hidden md:flex space-x-4 items-center">
               <a href="/co-koffee" className="text-gray-800 hover:text-gray-600 transition hover:scale-105 duration-300">
@@ -117,6 +118,9 @@ const Navbar = () => {
                       </a>
                       <a href="/messages" className="hover:text-blue-500 transition">
                         Messages
+                      </a>
+                      <a href="/profile" className="text-gray-800 hover:text-gray-600 transition hover:scale-105 duration-300">
+                        Profile
                       </a>
                       <button className="text-left hover:text-red-500 transition" onClick={handleLogout}>
                       Logout</button>

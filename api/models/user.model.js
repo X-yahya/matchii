@@ -22,14 +22,21 @@ const userSchema = new Schema({
       unique: true,
       trim: true
     },
-    password: {
+    verified: {
+    type: Boolean,
+    default: false,
+  },
+  
+  otp: String,
+  otpExpires: Date,
+  password: {
       type: String,
       required: true,
       trim: true
     },
     image: { 
       type: String,
-      required: true,
+      required: false,
       trim: true
     },
     country: {
