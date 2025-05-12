@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.13",
     "@shadcn/ui": "^0.0.4",
     "axios": "^1.8.4",
     "bcrypt": "^5.1.1",

@@ -6,7 +6,9 @@ const userRoute = require("./routes/user.route")
 const gigRoute = require("./routes/gig.route.js") ; 
 const reviewRoute = require("./routes/review.route.js") ;
 const authRoute = require("./routes/auth.route") ;
-const orderRoute = require("./routes/order.route") ;
+
+const orderRoute = require("./routes/order.route.js") ; 
+
 const converstationRoute = require("./routes/conversation.route.js") ;
 const messageRoute = require("./routes/message.route") ;
 const cookieParser = require("cookie-parser") ;
@@ -34,6 +36,11 @@ app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
 app.use("/api/gigs", gigRoute)
 app.use("/api/reviews", reviewRoute);
+app.use("/api/orders" , orderRoute) ; 
+
+
+
+
 app.use((err , req , res , next)=>
 {
   const errorStatus = err.status || 500 ; 

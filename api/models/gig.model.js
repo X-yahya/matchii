@@ -76,7 +76,8 @@ const GigSchema = new Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Gig", GigSchema);
+// Check if the model already exists before defining it
+module.exports = mongoose.models.Gig || mongoose.model("Gig", GigSchema);
 
 
 
