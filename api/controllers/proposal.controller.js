@@ -3,24 +3,42 @@ const Proposal = require("../models/proposal.model");
 const User = require("../models/user.model");
 const createError = require("../utils/createError");
 
+const checkProposal = async (req, res, next) => {
+  try {
+    const proposal = await Proposal.findOne({
+      projectId: req.params.projectId,
+      freelancerId: req.userId
+    });
+    
+    res.status(200).json(!!proposal);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Update createProposal to modify project
 const createProposal = async (req, res, next) => {
   try {
     const project = await Project.findById(req.params.projectId);
     if (!project) return next(createError(404, "Project not found"));
     
-    if (project.userId === req.userId) {
-      return next(createError(403, "You can't propose to your own project"));
+    if (project.userId.toString() === req.userId) {
+      return next(createError(403, "Can't propose to your own project"));
     }
 
-    const newProposal = new Proposal({
+    const newProposal = await Proposal.create({
       projectId: project._id,
       freelancerId: req.userId,
       clientId: project.userId,
       coverLetter: req.body.coverLetter
     });
 
-    await newProposal.save();
-    res.status(201).json("Proposal submitted successfully");
+    await Project.findByIdAndUpdate(
+      project._id,
+      { $push: { proposals: newProposal._id } }
+    );
+
+    res.status(201).json(newProposal);
   } catch (err) {
     next(err);
   }
@@ -86,6 +104,7 @@ const updateProposalStatus = async (req, res, next) => {
 };
 
 module.exports = {
+    checkProposal,
   createProposal,
   getProposals,
   updateProposalStatus

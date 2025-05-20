@@ -3,16 +3,19 @@ const { Schema } = mongoose;
 
 const ProposalSchema = new Schema({
   projectId: {
-    type: String,
-    required: true,
+    type: Schema.Types.ObjectId,
+    ref: 'Project',
+    required: true
   },
   freelancerId: {
-    type: String,
-    required: true,
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
   clientId: {
-    type: String,
-    required: true,
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
   coverLetter: {
     type: String,

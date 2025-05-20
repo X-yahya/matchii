@@ -42,6 +42,10 @@ const projectSchema = new mongoose.Schema({
     enum: ['draft', 'open', 'in_progress', 'completed', 'cancelled'],
     default: 'draft',
   },
+  proposals: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Proposal'
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Project', projectSchema);

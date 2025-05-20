@@ -65,20 +65,23 @@ const getProjects = async (req , res , next)=>
         next(err) ; 
     }
 };
-
-const getMyProjects = async (req , res , next)=>
-{
-    try {
-    const projects = await Project
-      .find({ userId: req.userId })
-      .populate('userId', 'username img level');  // now valid
+const getMyProjects = async (req, res, next) => {
+  try {
+    const projects = await Project.find({ userId: req.userId })
+      .populate({
+        path: 'proposals',
+        populate: {
+          path: 'freelancerId',
+          select: 'username image country sellerStats'
+        }
+      })
+      .sort({ createdAt: -1 });
 
     res.status(200).json(projects);
   } catch (err) {
     next(err);
   }
-}
-
+};
 module.exports = 
 {
     createProject,

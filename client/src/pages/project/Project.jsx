@@ -19,11 +19,11 @@ export default function Project() {
     queryFn: () => newRequest.get(`/projects/${id}`).then((res) => res.data),
   });
 
-  // Fetch client data
+  // Fetch client data with proper ID handling
   const { data: client } = useQuery({
-    queryKey: ['client', project?.userId],
-    queryFn: () => newRequest.get(`/users/${project?.userId}`).then((res) => res.data),
-    enabled: !!project?.userId
+    queryKey: ['client', project?.userId?._id],
+    queryFn: () => newRequest.get(`/users/${project?.userId?._id}`).then((res) => res.data),
+    enabled: !!project?.userId?._id
   });
 
   // Check existing proposal
@@ -168,12 +168,12 @@ export default function Project() {
 
             {/* Application Button */}
             {currentUser?.isSeller ? (
-              project.userId !== currentUser._id ? (
+              project.userId?._id !== currentUser._id ? (
                 hasApplied ? (
                   <div className="text-center p-4 bg-green-50 rounded-xl">
                     <p className="text-green-600 font-medium">✓ Application Submitted</p>
                     <p className="text-sm text-green-500 mt-1">
-                      Applied {moment(hasApplied.createdAt).fromNow()}
+                      Applied {moment().fromNow()}
                     </p>
                   </div>
                 ) : (
