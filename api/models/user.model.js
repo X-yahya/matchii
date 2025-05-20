@@ -56,7 +56,16 @@ const userSchema = new Schema({
     isAdmin: {
       type: Boolean,
       default: false
-    }
+    },
+    sellerStats: {
+    completedProjects: { type: Number, default: 0 },
+    activeProjects: { type: Number, default: 0 },
+    clientsWorkedWith: [{ 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'User' 
+    }],
+    successRate: { type: Number, default: 100 } // Percentage
+  },
   }, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);

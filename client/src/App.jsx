@@ -15,10 +15,15 @@ import Orders from "./pages/orders/Orders";
 import MyGigs from "./pages/myGigs/MyGig";
 import Add from "./pages/add/Add";
 import Messages from "./pages/messages/Messages";
+import Message from "./pages/message/Message"
 import Register from "./pages/register/Register";
 import Profile from "./pages/profile/Profile";
-import VerifyEmail from "./pages/verification/VerifyOtp";
 import VerifyOtp from "./pages/verification/VerifyOtp";
+import AddProject from "./pages/addProject/AddProject" ; 
+import Projects from "./pages/projects/Projects";
+import Project from "./pages/project/Project";
+import MyProjects from "./pages/myProjects/myProjects";
+import Proposals from "./pages/proposal/Proposal";
 
 
 
@@ -72,7 +77,7 @@ function App() {
         },
         {
           path: "/message/:id",
-          element: <Messages /> // Fix typo: "message" to "Messages"
+          element: <Message /> 
         },
         {
           path: "/profile",
@@ -82,7 +87,14 @@ function App() {
           path: "/verify-otp",
           element: <VerifyOtp />
         },
-
+        { path: "projects", element: <Projects /> },
+        { path: "projects/:id", element: <Project /> },
+        {path : "projects/myprojects" , element : <MyProjects />},
+        {path : "projects/add" , element : <AddProject />},
+          {
+        path: "/proposals",
+         element: <Proposals />,
+       }
       ]
     },
     {

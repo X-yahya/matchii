@@ -1,10 +1,5 @@
 const Gig = require("../models/gig.model");
-
-
 const Order = require("../models/oder.model") ; 
-
-
-
 const createOrder = async (req, res, next) => {
     try
     {

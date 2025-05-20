@@ -10,6 +10,7 @@
     "framer-motion": "^12.6.5",
     "install": "^0.13.0",
     "jsonwebtoken": "^9.0.2",
+    "moment": "^2.30.1",
     "npm": "^11.3.0",
     "react-icons": "^5.5.0"
   }

@@ -84,7 +84,6 @@ const login = async (req, res, next) => {
 
     if (!user) return next(createError(404, "User not found!"));
     
-    // Check if email is verified
     if (!user.verified) {
       return next(createError(401, "Please verify your email before logging in"));
     }

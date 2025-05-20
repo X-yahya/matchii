@@ -3,14 +3,15 @@ const mongoose = require('mongoose');
 dotenv = require('dotenv');
 const cors = require('cors');
 const userRoute = require("./routes/user.route")
-const gigRoute = require("./routes/gig.route.js") ; 
-const reviewRoute = require("./routes/review.route.js") ;
-const authRoute = require("./routes/auth.route") ;
+const gigRoute = require("./routes/gig.route.js")
+const reviewRoute = require("./routes/review.route.js")
+const authRoute = require("./routes/auth.route.js")
+const orderRoute = require("./routes/order.route.js")
+const conversationRoute = require("./routes/conversation.route.js")
+const messageRoute = require("./routes/message.route.js") ; 
+const projectRoute = require("./routes/project.route.js")
+proposalRoute = require("./routes/proposal.route.js") ;
 
-const orderRoute = require("./routes/order.route.js") ; 
-
-const converstationRoute = require("./routes/conversation.route.js") ;
-const messageRoute = require("./routes/message.route") ;
 const cookieParser = require("cookie-parser") ;
 
 
@@ -37,8 +38,10 @@ app.use("/api/users", userRoute);
 app.use("/api/gigs", gigRoute)
 app.use("/api/reviews", reviewRoute);
 app.use("/api/orders" , orderRoute) ; 
-
-
+app.use("/api/conversations", conversationRoute);
+app.use("/api/messages", messageRoute);
+app.use("/api/projects", projectRoute) ;
+app.use("/api/proposals" , proposalRoute) ;
 
 
 app.use((err , req , res , next)=>
