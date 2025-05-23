@@ -2,7 +2,7 @@ const User = require("../models/user.model");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const createError = require("../utils/createError");
-const { sendOtpEmail } = require("../utils/email"); // Use destructuring to import sendOtpEmail
+const { sendOtpEmail , sendPasswordResetEmail } = require("../utils/email"); // Use destructuring to import sendOtpEmail
 
 
 const generateUsername = (fullName) => {
@@ -80,7 +80,8 @@ const verifyOtp = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const user = await User.findOne({ name: req.body.name });
+    const { email, password } = req.body; // Changed from name to email
+    const user = await User.findOne({ email }); // Search by email instead of name
 
     if (!user) return next(createError(404, "User not found!"));
     
@@ -88,8 +89,8 @@ const login = async (req, res, next) => {
       return next(createError(401, "Please verify your email before logging in"));
     }
 
-    const isCorrect = await bcrypt.compare(req.body.password, user.password);
-    if (!isCorrect) return next(createError(404, "wrong password or username!"));
+    const isCorrect = await bcrypt.compare(password, user.password);
+    if (!isCorrect) return next(createError(401, "Incorrect password!")); // Updated error message
     
     const token = jwt.sign(
       {
@@ -99,12 +100,12 @@ const login = async (req, res, next) => {
       process.env.JWT_KEY
     );
     
-    const { password, ...info } = user;
-    res.cookie("accessTOKEN", token, { httpOnly: true }).status(200).send(user);
+    const { password: userPassword, ...safeUser } = user.toObject();
+    res.cookie("accessTOKEN", token, { httpOnly: true }).status(200).send(safeUser);
   } catch (err) {
     next(err);
   }
-}; 
+};
 
 const logout = async (req, res) => {
   res
@@ -116,5 +117,82 @@ const logout = async (req, res) => {
     .send("User has been logged out.");
 };
 
-module.exports = { register, verifyOtp , verifyOtp, login, logout };
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) return next(createError(404, "No account found with this email"));
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.otp = otp;
+    user.otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await user.save();
+
+    // Send OTP email
+    await sendPasswordResetEmail(email, otp);
+
+    res.status(200).json({ message: "OTP sent to email" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const verifyResetOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({
+      email: { $regex: new RegExp(email, 'i') },
+      otp,
+      otpExpires: { $gt: Date.now() }
+    });
+
+    if (!user) return next(createError(400, "Invalid or expired OTP"));
+
+    // Generate reset token
+    const resetToken = jwt.sign(
+      { id: user._id, purpose: 'password_reset' },
+      process.env.JWT_KEY,
+      { expiresIn: '10m' }
+    );
+
+    // Clear OTP
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    res.status(200).json({ resetToken });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+    
+    // Verify token
+    const decoded = jwt.verify(resetToken, process.env.JWT_KEY);
+    if (decoded.purpose !== 'password_reset') {
+      return next(createError(401, "Invalid token"));
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) return next(createError(404, "User not found"));
+
+    // Update password
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successful" });
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return next(createError(401, "Reset token expired"));
+    }
+    next(err);
+  }
+};
+
+module.exports = { register, verifyOtp , verifyOtp, login, logout , forgotPassword, verifyResetOtp, resetPassword };
 

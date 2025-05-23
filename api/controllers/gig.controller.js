@@ -48,31 +48,55 @@ const getGig = async (req, res) => {
 };
 
 const getGigs = async (req, res, next) => {
-  const q = req.query;
-
-  // Build filters based on query parameters
-  const filters = {
-    ...(q.userId && { userId: q.userId }), 
-    ...(q.category && { cat: q.cat }), 
-    ...(q.min && { "plans.price": { $gte: Number(q.min) } }), 
-    ...(q.max && { "plans.price": { $lte: Number(q.max) } }), 
-    ...(q.search && {
-      title: { $regex: q.search, $options: "i" }, 
-    }),
-  };
-
-  console.log("Filters applied:", filters);
-  console.log("Querying gigs for userId:", q.userId);
-
   try {
-    // Fetch gigs based on filters
-    const gigs = await Gig.find(filters);
-    res.status(200).send(gigs);
+    const q = req.query;
+
+    // Validate rating parameter
+    if (q.rating && (isNaN(q.rating) || q.rating < 1 || q.rating > 5)) {
+      return next(createError(400, "Rating must be between 1 and 5"));
+    }
+
+    const filters = {
+      ...(q.userId && { userId: q.userId }),
+      ...(q.category && { category: q.category }),
+      ...(q.min && { "plans.price": { $gte: Number(q.min) } }),
+      ...(q.max && { "plans.price": { $lte: Number(q.max) } }),
+      ...(q.rating && { 
+        $expr: {
+          $and: [
+            { $gt: ["$starNumber", 0] },
+            {
+              $gte: [
+                { $divide: ["$totalStars", "$starNumber"] },
+                Number(q.rating)
+              ]
+            }
+          ]
+        }
+      }),
+      ...(q.search && {
+        $or: [
+          { title: { $regex: q.search, $options: "i" } },
+          { description: { $regex: q.search, $options: "i" } }
+        ]
+      }),
+    };
+
+    const sortOptions = {};
+    if (q.sort) {
+      sortOptions[q.sort] = -1;
+    }
+
+    const gigs = await Gig.find(filters)
+      .sort(sortOptions)
+      .populate('userId', 'username img level');
+      
+    res.status(200).json(gigs);
   } catch (err) {
-    console.error(err);
     next(err);
   }
 };
+
 
 const getMyGigs = async (req, res, next) => {
   try {

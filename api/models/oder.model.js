@@ -33,6 +33,27 @@ const OrderSchema = new Schema(
         paymentIntent: {
       type: String,
     },
+      status: {
+    type: String,
+    enum: ['pending', 'accepted', 'refused', 'inProgress', 'completed'],
+    default: 'pending'
+  },
+  buyerAccepted: {
+    type: Boolean,
+    default: false
+  },
+  sellerAccepted: {
+    type: Boolean,
+    default: false
+  },
+  buyerCompleted: {
+    type: Boolean,
+    default: false
+  },
+  sellerCompleted: {
+    type: Boolean,
+    default: false
+  },
     },
     { timestamps: true }
 ) ;

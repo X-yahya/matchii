@@ -43,7 +43,25 @@ const sendOtpEmail = async (email, otp) => {
   }
 };
 
+const sendPasswordResetEmail = async (email, otp) => {
+  const mailOptions = {
+    to: email,
+    subject: 'Password Reset Request',
+    html: `<p>Your password reset OTP is: <strong>${otp}</strong></p>
+          <p>This code will expire in 10 minutes.</p>`
+  };
+  
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Password reset email sent to ${email}`);
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    throw new Error('Failed to send password reset email');
+  }
+};
+
 module.exports = {
  
-  sendOtpEmail
+  sendOtpEmail , 
+  sendPasswordResetEmail
 };

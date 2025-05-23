@@ -4,108 +4,167 @@ const User = require("../models/user.model");
 const createError = require("../utils/createError");
 
 const checkProposal = async (req, res, next) => {
-  try {
-    const proposal = await Proposal.findOne({
-      projectId: req.params.projectId,
-      freelancerId: req.userId
-    });
-    
-    res.status(200).json(!!proposal);
-  } catch (err) {
-    next(err);
-  }
+    try {
+        const proposal = await Proposal.findOne({
+            projectId: req.params.projectId,
+            freelancerId: req.userId
+        });
+
+        res.status(200).json(!!proposal);
+    } catch (err) {
+        next(err);
+    }
 };
 
-// Update createProposal to modify project
 const createProposal = async (req, res, next) => {
-  try {
-    const project = await Project.findById(req.params.projectId);
-    if (!project) return next(createError(404, "Project not found"));
-    
-    if (project.userId.toString() === req.userId) {
-      return next(createError(403, "Can't propose to your own project"));
+    try {
+        const project = await Project.findById(req.params.projectId);
+        if (!project) return next(createError(404, "Project not found"));
+
+        if (project.userId.toString() === req.userId) {
+            return next(createError(403, "Can't propose to your own project"));
+        }
+
+        // Check if user already has a proposal for this project
+        const existingProposal = await Proposal.findOne({
+            projectId: req.params.projectId,
+            freelancerId: req.userId
+        });
+
+        if (existingProposal) {
+            return next(createError(400, "You have already submitted a proposal for this project"));
+        }
+
+        const newProposal = await Proposal.create({
+            projectId: project._id,
+            freelancerId: req.userId,
+            clientId: project.userId,
+            coverLetter: req.body.coverLetter
+        });
+
+        // Add proposal to project's proposals array
+        try {
+            await Project.findByIdAndUpdate(
+                project._id,
+                { $push: { proposals: newProposal._id } },
+                { new: true }
+            );
+        } catch (updateErr) {
+            // Rollback proposal creation if linking fails
+            await Proposal.findByIdAndDelete(newProposal._id);
+            return next(createError(500, "Failed to link proposal to project"));
+        }
+
+        res.status(201).json(newProposal);
+    } catch (err) {
+        next(err);
     }
-
-    const newProposal = await Proposal.create({
-      projectId: project._id,
-      freelancerId: req.userId,
-      clientId: project.userId,
-      coverLetter: req.body.coverLetter
-    });
-
-    await Project.findByIdAndUpdate(
-      project._id,
-      { $push: { proposals: newProposal._id } }
-    );
-
-    res.status(201).json(newProposal);
-  } catch (err) {
-    next(err);
-  }
 };
 
 const getProposals = async (req, res, next) => {
-  try {
-    const proposals = await Proposal.find({
-      ...(req.isSeller ? { freelancerId: req.userId } : { clientId: req.userId })
-    });
+    try {
+        const baseQuery = req.isSeller
+            ? { freelancerId: req.userId }
+            : { clientId: req.userId };
 
-    // Get related data in single queries
-    const [projects, users] = await Promise.all([
-      Project.find({ _id: { $in: proposals.map(p => p.projectId) } }),
-      User.find({ _id: { $in: proposals.map(p => req.isSeller ? p.clientId : p.freelancerId) } })
-    ]);
+        const proposals = await Proposal.find(baseQuery)
+            .populate({
+                path: 'projectId',
+                select: 'title budget duration status category coverImage',
+                model: 'Project'
+            })
+            .populate({
+                path: req.isSeller ? 'clientId' : 'freelancerId',
+                select: 'username image country sellerStats',
+                model: 'User'
+            })
+            .sort({ createdAt: -1 });
 
-    const projectMap = new Map(projects.map(p => [p._id.toString(), p]));
-    const userMap = new Map(users.map(u => [u._id.toString(), u]));
+        const enhancedProposals = proposals.map(proposal => ({
+            ...proposal.toObject(),
+            project: proposal.projectId,
+            counterpart: req.isSeller ? proposal.clientId : proposal.freelancerId
+        }));
 
-    const enhancedProposals = proposals.map(proposal => ({
-      ...proposal._doc,
-      project: projectMap.get(proposal.projectId.toString()),
-      counterpart: req.isSeller ? 
-        userMap.get(proposal.clientId.toString()) : 
-        userMap.get(proposal.freelancerId.toString())
-    }));
-
-    res.status(200).json(enhancedProposals);
-  } catch (err) {
-    next(err);
-  }
+        res.status(200).json(enhancedProposals);
+    } catch (err) {
+        next(err);
+    }
 };
 
 const updateProposalStatus = async (req, res, next) => {
-  try {
-    const proposal = await Proposal.findById(req.params.id);
-    if (!proposal) return next(createError(404, "Proposal not found"));
+    try {
+        const proposal = await Proposal.findById(req.params.id)
+            .populate({
+                path: 'projectId',
+                select: 'userId status team'
+            })
+            .populate({
+                path: 'freelancerId',
+                select: '_id username image country sellerStats'
+            });
 
-    // Authorization check
-    if (proposal.clientId !== req.userId) {
-      return next(createError(403, "Only project owner can update status"));
+        if (!proposal) {
+            return next(createError(404, "Proposal not found"));
+        }
+
+        if (proposal.projectId.userId.toString() !== req.userId) {
+            return next(createError(403, "Unauthorized to update this proposal"));
+        }
+
+        // Update proposal status
+        const updatedProposal = await Proposal.findByIdAndUpdate(
+            req.params.id,
+            { status: req.body.status },
+            { new: true, runValidators: true }
+        );
+
+        if (req.body.status === 'accepted') {
+            // Check if freelancer is already in the team
+            const project = await Project.findById(proposal.projectId._id);
+            const isAlreadyInTeam = project.team.some(
+                member => member.freelancerId.toString() === proposal.freelancerId._id.toString()
+            );
+
+            if (!isAlreadyInTeam) {
+                // Add freelancer to project team
+                await Project.findByIdAndUpdate(
+                    proposal.projectId._id,
+                    {
+                        $addToSet: {
+                            team: {
+                                freelancerId: proposal.freelancerId._id,
+                                role: 'Contributor',
+                                joinedAt: new Date()
+                            }
+                        },
+                        status: 'in_progress'
+                    }
+                );
+            }
+
+            // Optionally reject other pending proposals from the same freelancer
+            // (if you want only one proposal per freelancer to be accepted)
+            // await Proposal.updateMany(
+            //     {
+            //         projectId: proposal.projectId._id,
+            //         freelancerId: proposal.freelancerId._id,
+            //         _id: { $ne: proposal._id },
+            //         status: 'pending'
+            //     },
+            //     { status: 'rejected' }
+            // );
+        }
+
+        res.status(200).json(updatedProposal);
+    } catch (err) {
+        next(err);
     }
-
-    const updatedProposal = await Proposal.findByIdAndUpdate(
-      req.params.id,
-      { status: req.body.status },
-      { new: true }
-    );
-
-    // If accepted, update project status
-    if (req.body.status === 'accepted') {
-      await Project.findByIdAndUpdate(
-        proposal.projectId,
-        { status: 'in_progress', freelancerId: proposal.freelancerId }
-      );
-    }
-
-    res.status(200).json(updatedProposal);
-  } catch (err) {
-    next(err);
-  }
 };
 
 module.exports = {
     checkProposal,
-  createProposal,
-  getProposals,
-  updateProposalStatus
+    createProposal,
+    getProposals,
+    updateProposalStatus
 };

@@ -24,6 +24,7 @@ import Projects from "./pages/projects/Projects";
 import Project from "./pages/project/Project";
 import MyProjects from "./pages/myProjects/myProjects";
 import Proposals from "./pages/proposal/Proposal";
+import ForgotPasswordEmail from "./pages/ForgotPassword/ForgotPassword" ;
 
 
 
@@ -104,6 +105,10 @@ function App() {
     {
       path: "/register",
       element: <Register />
+    },
+    {
+      path: "/forgot-password",
+      element: <ForgotPasswordEmail />
     }
   ]);
 

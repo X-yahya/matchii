@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import newRequest from '../../utils/newRequest';
 import { useNavigate } from 'react-router-dom';
-
+import {categories} from '../../data';
 export default function Add() {
   const [gigData, setGigData] = useState({
     title: '',
@@ -107,9 +107,11 @@ export default function Add() {
                 required
               >
                 <option value="">Select Category</option>
-                <option value="web-design">Web Design</option>
-                <option value="graphic-design">Graphic Design</option>
-                <option value="writing">Writing</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
               </select>
             </div>
 

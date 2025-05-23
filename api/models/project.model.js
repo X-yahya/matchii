@@ -1,51 +1,46 @@
+// models/project.model.js
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
 
 const projectSchema = new mongoose.Schema({
   userId: {
-    type: Schema.Types.ObjectId,     
-    ref: 'User',                     
-    required: true,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
   title: {
     type: String,
-    required: true,
-    trim: true,
+    required: true
   },
-  category: {
-    type: String, 
-    required: true,
-    trim: true,
-  },
-  description: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  budget: {
-    type: Number,
-    required: true,
-    min: 1,
-  },
-  duration: {
-    type: Number,
-    required: true,
-    min: 1, 
-  },
-  coverImage: {
-    type: String,
-    required: true,
-    trim: true,
-  },
+  description: String,
+  budget: Number,
+  duration: Number,
+  category: String,
   status: {
     type: String,
-    enum: ['draft', 'open', 'in_progress', 'completed', 'cancelled'],
-    default: 'draft',
+    enum: ['open', 'in_progress', 'completed'],
+    default: 'open'
   },
   proposals: [{
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Proposal'
-  }]
-}, { timestamps: true });
+  }],
+  team: [{
+    freelancerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    role: String,
+    joinedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  coverImage: String,
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
 
 module.exports = mongoose.model('Project', projectSchema);

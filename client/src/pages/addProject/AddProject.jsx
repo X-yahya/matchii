@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import newRequest from "../../utils/newRequest";
+import { categories } from "../../data";
 
 export default function AddProject() {
   const [project, setProject] = useState({
@@ -13,7 +14,6 @@ export default function AddProject() {
   });
   const navigate = useNavigate();
 
-  // single-file upload to Cloudinary
   const uploadImage = async (file) => {
     const fd = new FormData();
     fd.append("file", file);
@@ -29,7 +29,6 @@ export default function AddProject() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // require a cover image
       if (!project.coverImage) {
         alert("Please upload a cover image");
         return;
@@ -54,45 +53,44 @@ export default function AddProject() {
     <div className="max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-sm mt-12">
       <h2 className="text-2xl font-bold mb-6">Create New Project</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Title */}
         <div>
           <label className="block mb-1 font-medium">Title</label>
           <input
             type="text"
             value={project.title}
-            onChange={(e) =>
-              setProject({ ...project, title: e.target.value })
-            }
+            onChange={(e) => setProject({ ...project, title: e.target.value })}
             className="w-full px-4 py-2 border rounded-lg"
             required
           />
         </div>
-        {/* Category */}
+
         <div>
           <label className="block mb-1 font-medium">Category</label>
-          <input
-            type="text"
+          <select
             value={project.category}
-            onChange={(e) =>
-              setProject({ ...project, category: e.target.value })
-            }
+            onChange={(e) => setProject({ ...project, category: e.target.value })}
             className="w-full px-4 py-2 border rounded-lg"
             required
-          />
+          >
+            <option value="">Select a Category</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
         </div>
-        {/* Description */}
+
         <div>
           <label className="block mb-1 font-medium">Description</label>
           <textarea
             value={project.description}
-            onChange={(e) =>
-              setProject({ ...project, description: e.target.value })
-            }
+            onChange={(e) => setProject({ ...project, description: e.target.value })}
             className="w-full px-4 py-2 border rounded-lg h-32"
             required
           />
         </div>
-        {/* Budget & Duration */}
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block mb-1 font-medium">Budget ($)</label>
@@ -100,9 +98,7 @@ export default function AddProject() {
               type="number"
               min="1"
               value={project.budget}
-              onChange={(e) =>
-                setProject({ ...project, budget: e.target.value })
-              }
+              onChange={(e) => setProject({ ...project, budget: e.target.value })}
               className="w-full px-4 py-2 border rounded-lg"
               required
             />
@@ -113,23 +109,19 @@ export default function AddProject() {
               type="number"
               min="1"
               value={project.duration}
-              onChange={(e) =>
-                setProject({ ...project, duration: e.target.value })
-              }
+              onChange={(e) => setProject({ ...project, duration: e.target.value })}
               className="w-full px-4 py-2 border rounded-lg"
               required
             />
           </div>
         </div>
-        {/* Cover Image */}
+
         <div>
           <label className="block mb-1 font-medium">Cover Image</label>
           <input
             type="file"
             accept="image/*"
-            onChange={(e) =>
-              setProject({ ...project, coverImage: e.target.files[0] })
-            }
+            onChange={(e) => setProject({ ...project, coverImage: e.target.files[0] })}
             required
           />
         </div>
