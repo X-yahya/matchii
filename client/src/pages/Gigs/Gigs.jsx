@@ -208,7 +208,7 @@ export default function Gigs() {
                   ...gig,
                   img: gig.coverImage,
                   price: gig.plans?.length > 0 
-                    ? `From $${Math.min(...gig.plans.map(p => p.price))}` 
+                    ? `${Math.min(...gig.plans.map(p => p.price))} dt` 
                     : "N/A",
                   averageRating: gig.starNumber > 0 
                     ? `${(gig.totalStars / gig.starNumber).toFixed(1)}`

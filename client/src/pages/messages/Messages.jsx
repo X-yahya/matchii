@@ -3,6 +3,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import newRequest from "../../utils/newRequest";
 import moment from "moment";
+import { FiMessageSquare, FiClock, FiAlertCircle, FiChevronRight } from "react-icons/fi";
 
 const Messages = () => {
   const currentUser = JSON.parse(localStorage.getItem("currentUser")) || {};
@@ -21,25 +22,34 @@ const Messages = () => {
   const handleRead = (id) => mutation.mutate(id);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Messages</h1>
+    <div className="min-h-screen bg-gray-50/50 p-4 sm:p-8">
+      <div className="max-w-3xl mx-auto space-y-2">
+        <h1 className="text-2xl font-semibold text-gray-900 mb-6 px-2">Messages</h1>
 
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
               <div
                 key={i}
-                className="h-20 bg-gray-100 rounded-2xl animate-pulse"
-              />
+                className="h-20 bg-white/80 backdrop-blur-sm rounded-xl p-4 animate-pulse"
+              >
+                <div className="flex gap-3">
+                  <div className="h-10 w-10 bg-gray-200 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/3" />
+                    <div className="h-3 bg-gray-200 rounded w-2/3" />
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         ) : error ? (
-          <div className="p-4 bg-red-100 text-red-600 rounded-xl border border-red-200">
-            Failed to load conversations
+          <div className="p-4 bg-red-50/50 backdrop-blur-sm rounded-xl flex items-center gap-3 text-red-600">
+            <FiAlertCircle className="flex-shrink-0" />
+            <span className="text-sm">Failed to load conversations</span>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm ring-1 ring-black/5">
             {conversations?.map((c) => {
               const convId = c.id || c._id;
               const isUnread = currentUser.isSeller 
@@ -50,39 +60,45 @@ const Messages = () => {
                 <Link
                   to={`/message/${convId}`}
                   key={convId}
-                  className="group block px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
+                  className="group block px-5 py-4 hover:bg-gray-50/50 transition-all duration-200 ease-out border-b border-gray-100/50 last:border-0"
                   onClick={() => handleRead(convId)}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="relative">
+                    <div className="relative flex-shrink-0">
                       <img
                         src={c.otherUserAvatar || "/default-avatar.png"}
                         alt={c.otherUserName}
-                        className="w-12 h-12 rounded-full object-cover border border-gray-200"
+                        className="w-11 h-11 rounded-xl object-cover ring-1 ring-black/5"
                       />
                       {isUnread && (
-                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-sky-500 rounded-full ring-2 ring-white" />
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="text-base font-semibold text-gray-900">
-                          {c.otherUserName}
-                          {isUnread && (
-                            <span className="ml-2 w-2 h-2 bg-red-500 rounded-full inline-block" />
-                          )}
-                        </h3>
-                        <span className="text-xs text-gray-500">
-                          {moment(c.updatedAt).format("h:mm A")}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-base ${isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
+                            {c.otherUserName}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <FiClock className="w-4 h-4" />
+                          <span className="text-xs">
+                            {moment(c.updatedAt).format("h:mm A")}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600 truncate">
-                        {c.lastMessage?.substring(0, 60) || "No messages yet"}
+                      <div className="flex items-center gap-2">
+                        <FiMessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <p className={`text-sm truncate ${isUnread ? 'text-gray-900' : 'text-gray-500'}`}>
+                          {c.lastMessage?.substring(0, 60) || "Start a conversation"}
+                        </p>
                         {isUnread && (
-                          <span className="ml-2 inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                          <span className="ml-auto w-2 h-2 bg-sky-500 rounded-full animate-pulse" />
                         )}
-                      </p>
+                        <FiChevronRight className="w-5 h-5 text-gray-400 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                     </div>
                   </div>
                 </Link>

@@ -5,13 +5,6 @@ import newRequest from "../../utils/newRequest";
 const Review = ({ review }) => {
   const [selectedImgIndex, setSelectedImgIndex] = useState(-1);
 
-  
-  const { isLoading, error, data: user } = useQuery({
-    queryKey: ["user", review.userId],
-    queryFn: () => newRequest.get(`/users/${review.userId}`).then((res) => res.data),
-    enabled: !!review.userId,
-  });
-
   const handleImageNavigation = (direction) => {
     setSelectedImgIndex(prev => {
       if (direction === 'next') {
@@ -20,8 +13,7 @@ const Review = ({ review }) => {
       return (prev - 1 + review.gallery.length) % review.gallery.length;
     });
   };
-
-
+  
 
   return (
     <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100/50 hover:shadow-2xl transition-all duration-300 ease-productive-standard">
@@ -75,32 +67,15 @@ const Review = ({ review }) => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className="relative">
-            {isLoading ? (
-              <div className="w-14 h-14 rounded-3xl bg-gradient-to-br from-gray-100 to-gray-50 animate-pulse" />
-            ) : error ? (
-              <div className="w-14 h-14 rounded-3xl bg-gray-100 border-2 border-white flex items-center justify-center">
-                <span className="text-2xl">🙎</span>
-              </div>
-            ) : (
-              <div className="relative group">
-                <img
-                  src={user?.image || "/img/noavatar.jpg"}
-                  alt={user?.username || "User"}
-                  className="w-14 h-14 rounded-3xl object-cover border-2 border-white shadow-lg transition-transform duration-300 group-hover:scale-105"
-                />
-
-              </div>
-            )}
+            <img
+              src={review.userId?.image || "/default-avatar.png"}
+              alt={review.userId?.username || "User"}
+              className="w-14 h-14 rounded-3xl object-cover bg-gray-100"
+            />
           </div>
           <div>
             <h4 className="font-semibold text-gray-900 text-lg">
-              {isLoading ? (
-                <span className="bg-gray-100 animate-pulse rounded-xl w-32 h-5 block" />
-              ) : error ? (
-                "Verified Buyer"
-              ) : (
-                user?.username || "Verified Buyer"
-              )}
+              {review.userId?.username || "Unknown User"}
             </h4>
             <p className="text-sm text-gray-400 mt-1">
               {new Date(review.createdAt).toLocaleDateString('en-US', {

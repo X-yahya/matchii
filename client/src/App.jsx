@@ -25,6 +25,7 @@ import Project from "./pages/project/Project";
 import MyProjects from "./pages/myProjects/myProjects";
 import Proposals from "./pages/proposal/Proposal";
 import ForgotPasswordEmail from "./pages/ForgotPassword/ForgotPassword" ;
+import EditGig from "./pages/editGig/EditGig";
 
 
 
@@ -59,6 +60,10 @@ function App() {
         {
           path: "/gig/:id",
           element: <Gig />
+        },
+        {
+          path : "/edit-gig/:id",
+          element: <EditGig />
         },
         {
           path: "/orders",

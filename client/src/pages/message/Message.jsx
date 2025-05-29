@@ -3,7 +3,9 @@ import React, { useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import newRequest from "../../utils/newRequest";
 
+
 const Message = () => {
+
   const { id } = useParams();
   const currentUser = JSON.parse(localStorage.getItem("currentUser"));
   const queryClient = useQueryClient();

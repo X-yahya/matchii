@@ -1,173 +1,194 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import newRequest from "../../utils/newRequest";
 import Review from "../review/Review";
+import { FiAlertCircle, FiLock, FiStar, FiCheckCircle, FiXCircle } from "react-icons/fi";
 
 const Reviews = ({ gigId }) => {
   const queryClient = useQueryClient();
+  const [currentUser, setCurrentUser] = useState(null);
   const [hoverRating, setHoverRating] = useState(0);
   const [selectedRating, setSelectedRating] = useState(0);
+  const [formError, setFormError] = useState(null);
 
-  const { isLoading, error, data: reviews } = useQuery({
-    queryKey: ["reviews", gigId],
-    queryFn: () => newRequest.get(`/reviews/${gigId}`).then((res) => res.data),
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("currentUser"));
+    setCurrentUser(user);
+  }, []);
+
+  // Check purchase status
+  const { data: hasPurchased } = useQuery({
+    queryKey: ["purchaseCheck", gigId],
+    queryFn: () => newRequest.get(`/orders/check/${gigId}`),
+    enabled: !!currentUser?._id,
+    retry: 2
   });
 
+  // Get existing reviews
+  const { 
+    isLoading, 
+    error, 
+    data: reviews 
+  } = useQuery({
+    queryKey: ["reviews", gigId],
+    queryFn: () => newRequest.get(`/reviews/${gigId}`),
+    select: (res) => res.data, // <-- This extracts the array
+    onError: (err) => {
+      console.error("Failed to load reviews:", err);
+    }
+  });
+
+  // Review mutation
   const mutation = useMutation({
     mutationFn: (review) => newRequest.post("/reviews", review),
-    onSuccess: () => queryClient.invalidateQueries(["reviews", gigId]),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["reviews", gigId]);
+      setSelectedRating(0);
+      setHoverRating(0);
+      setFormError(null);
+    },
+    onError: (err) => {
+      setFormError(err.response?.data?.message || "Failed to submit review");
+    }
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const desc = formData.get("desc");
-    const star = selectedRating;
+    setFormError(null);
     
-    if (star === 0) {
-      alert("Please select a rating before submitting");
+    const desc = e.target.desc.value.trim();
+    const star = parseInt(selectedRating);
+
+    // Frontend validation
+    if (!desc || desc.length < 10) {
+      setFormError("Review text must be at least 10 characters");
       return;
     }
 
-    mutation.mutate({ gigId, desc, star });
-    e.target.reset();
-    setSelectedRating(0);
-    setHoverRating(0);
+    if (isNaN(star) || star < 1 || star > 5) {
+      setFormError("Please select a valid rating (1-5 stars)");
+      return;
+    }
+
+    mutation.mutate({ 
+      gigId: gigId.toString(),
+      desc,
+      star 
+    });
   };
 
-  const RatingStars = () => {
-    const stars = [1, 2, 3, 4, 5];
-    
-    return (
-      <div className="flex items-center gap-2">
-        {stars.map((star) => (
-          <button
-            type="button"
-            key={star}
-            onClick={() => setSelectedRating(star)}
-            onMouseEnter={() => setHoverRating(star)}
-            onMouseLeave={() => setHoverRating(0)}
-            className={`transition-all duration-200 ${
-              star <= (hoverRating || selectedRating)
-                ? "text-yellow-400 scale-110"
-                : "text-gray-300"
-            }`}
-            aria-label={`Rate ${star} stars`}
-          >
-            <svg
-              className="w-10 h-10 fill-current"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-            </svg>
-          </button>
-        ))}
-        <div className="ml-3 text-lg font-medium text-gray-600">
-          {selectedRating > 0 ? `${selectedRating}/5` : "Tap to rate"}
-        </div>
-      </div>
-    );
-  };
+  const RatingStars = () => (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          type="button"
+          key={star}
+          onClick={() => setSelectedRating(star)}
+          onMouseEnter={() => setHoverRating(star)}
+          onMouseLeave={() => setHoverRating(0)}
+          className={`text-2xl transition-colors ${
+            star <= (hoverRating || selectedRating)
+              ? "text-yellow-400"
+              : "text-gray-300"
+          } ${mutation.isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+          disabled={mutation.isLoading}
+        >
+          <FiStar />
+        </button>
+      ))}
+      <span className="ml-2 text-sm text-gray-600">
+        {selectedRating ? `${selectedRating}/5` : "Rate your experience"}
+      </span>
+    </div>
+  );
+
+  const existingReview = reviews?.find(
+    (review) => review.userId === currentUser?._id
+  );
 
   return (
     <div className="space-y-10 mt-12">
-      <h2 className="text-[28px] font-semibold text-gray-900">Customer Reviews</h2>
+      <h2 className="text-2xl font-bold text-gray-900">Customer Reviews</h2>
 
+      {/* Reviews List */}
       {isLoading ? (
-        <div className="space-y-6">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="animate-pulse p-5 rounded-2xl bg-gray-50 border border-gray-100"
-            >
-              <div className="h-4 bg-gray-200/80 rounded-full w-32 mb-3"></div>
-              <div className="h-3 bg-gray-200/60 rounded-full w-4/5 mb-2"></div>
-              <div className="h-3 bg-gray-200/60 rounded-full w-3/5"></div>
-            </div>
+        <div className="space-y-4 animate-pulse">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-24 bg-gray-100 rounded-xl" />
           ))}
         </div>
       ) : error ? (
-        <div className="flex items-center gap-3 bg-red-50/90 p-5 rounded-2xl border border-red-100">
-          <div className="bg-red-100 p-2 rounded-full">
-            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-            </svg>
-          </div>
-          <p className="text-red-600 font-medium">Error loading reviews</p>
+        <div className="p-4 bg-red-50 rounded-xl flex items-center gap-3">
+          <FiAlertCircle className="text-red-500" />
+          <span className="text-red-600">Error loading reviews</span>
         </div>
       ) : reviews?.length > 0 ? (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {reviews.map((review) => (
             <Review key={review._id} review={review} />
           ))}
         </div>
       ) : (
-        <div className="text-center py-8 space-y-2">
-          <svg
-            className="w-12 h-12 text-gray-400 mx-auto"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-          </svg>
-          <p className="text-gray-500 font-medium">Be the first to share your experience</p>
+        <div className="p-6 bg-gray-50 rounded-xl text-center">
+          <p className="text-gray-500">No reviews yet - be the first!</p>
         </div>
       )}
 
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">Share Your Experience</h3>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <textarea
-            name="desc"
-            placeholder="Share detailed thoughts about your experience..."
-            required
-            className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[15px] leading-snug placeholder-gray-400"
-            rows="4"
-          />
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-600 mb-2">
-              Service Rating
-            </label>
-            <RatingStars />
-            <input type="hidden" name="star" value={selectedRating} required />
+      {/* Review Form */}
+      {currentUser ? (
+        !hasPurchased?.data ? (
+          <div className="bg-yellow-50 p-4 rounded-xl flex items-center gap-3">
+            <FiLock className="w-5 h-5 text-yellow-600" />
+            <p className="text-yellow-700">
+              You must purchase this service to leave a review
+            </p>
           </div>
+        ) : existingReview ? (
+          <div className="bg-blue-50 p-4 rounded-xl flex items-center gap-3">
+            <FiCheckCircle className="w-5 h-5 text-blue-600" />
+            <p className="text-blue-700">You've already reviewed this service</p>
+          </div>
+        ) : (
+          <div className="bg-white p-6 rounded-xl border border-gray-100">
+            <h3 className="text-lg font-semibold mb-4">Write a Review</h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <RatingStars />
+              
+              <textarea
+                name="desc"
+                placeholder="Share your experience (minimum 10 characters)..."
+                className="w-full p-3 border border-gray-200 rounded-lg"
+                rows="4"
+                minLength="10"
+                required
+                disabled={mutation.isLoading}
+              />
 
-          <button
-            type="submit"
-            disabled={mutation.isLoading}
-            className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-700 text-white py-4 rounded-xl transition-all duration-200 font-medium shadow-sm relative"
-          >
-            {mutation.isLoading ? (
-              <>
-                <svg
-                  className="animate-spin h-5 w-5 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-                Submitting...
-              </>
-            ) : (
-              <>
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Submit Review
-              </>
-            )}
-          </button>
-        </form>
-      </div>
+              {formError && (
+                <div className="p-3 bg-red-50 rounded-lg flex items-center gap-2">
+                  <FiXCircle className="text-red-500 flex-shrink-0" />
+                  <span className="text-red-600">{formError}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={mutation.isLoading}
+                className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
+              >
+                {mutation.isLoading ? "Submitting..." : "Submit Review"}
+              </button>
+            </form>
+          </div>
+        )
+      ) : (
+        <div className="bg-gray-50 p-4 rounded-xl flex items-center gap-3">
+          <FiLock className="w-5 h-5 text-gray-600" />
+          <p className="text-gray-700">
+            Please login to leave a review
+          </p>
+        </div>
+      )}
     </div>
   );
 };

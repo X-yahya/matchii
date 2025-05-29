@@ -1,18 +1,39 @@
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import newRequest from '../../utils/newRequest';
 import { useState } from 'react';
 
 export default function MyGigs() {
-  // Get authenticated user from localStorage
   const [currentUser] = useState(JSON.parse(localStorage.getItem('currentUser')));
-  
+  const queryClient = useQueryClient();
+  const [updatingId, setUpdatingId] = useState(null);
+
   // Fetch user-specific gigs from API
   const { isLoading, error, data: myGigs } = useQuery({
     queryKey: ['myGigs'],
     queryFn: () => newRequest.get('/gigs/mygigs').then((res) => res.data),
     enabled: !!currentUser?.isSeller
   });
+
+  // Mutation for toggling gig status
+  const toggleStatusMutation = useMutation({
+    mutationFn: (gigId) => {
+      setUpdatingId(gigId);
+      return newRequest.patch(`/gigs/${gigId}/toggle-status`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['myGigs']);
+      setUpdatingId(null);
+    },
+    onError: (error) => {
+      alert(`Failed to update status: ${error.response?.data?.message || error.message}`);
+      setUpdatingId(null);
+    }
+  });
+
+  const handleToggleStatus = (gigId) => {
+    toggleStatusMutation.mutate(gigId);
+  };
 
   // Loading state
   if (isLoading) {
@@ -104,7 +125,7 @@ export default function MyGigs() {
                 <div className="flex justify-between items-center mb-4">
                   <div>
                     <span className="text-xl font-bold text-gray-900">
-                      ${gig.plans?.[0]?.price || '0'}
+                      {gig.plans?.[0]?.price || '0'} dt
                     </span>
                     <span className="text-sm text-gray-500 ml-1">starting price</span>
                   </div>
@@ -122,8 +143,21 @@ export default function MyGigs() {
                     >
                       Edit
                     </Link>
-                    <button className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors">
-                      {gig.status === 'active' ? 'Pause' : 'Activate'}
+                    <button 
+                      onClick={() => handleToggleStatus(gig._id)}
+                      disabled={toggleStatusMutation.isLoading && updatingId === gig._id}
+                      className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
+                        toggleStatusMutation.isLoading && updatingId === gig._id 
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                          : gig.status === 'active' 
+                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' 
+                            : 'bg-green-100 text-green-800 hover:bg-green-200'
+                      }`}
+                    >
+                      {toggleStatusMutation.isLoading && updatingId === gig._id 
+                        ? 'Updating...' 
+                        : gig.status === 'active' ? 'Pause' : 'Activate'
+                      }
                     </button>
                   </div>
                 )}
