@@ -1,14 +1,19 @@
-const express = require("express") ;
-const verifyToken = require("../middleware/jwt") ; 
-const { createConversation , updateConversation , getSingleConversation , getConversations } = require("../controllers/conversation.controller")
+// conversation.route.js
+const express = require("express");
+const router = express.Router();
+const verifyToken = require("../middleware/jwt");
+const {
+  createConversation,
+  updateConversation,
+  getSingleConversation,
+  getConversations,
+  checkExistingConversation // Add this
+} = require("../controllers/conversation.controller");
 
-
-const router = express.Router() ; 
-
-
-router.get("/",verifyToken , getConversations) ; 
-router.post("/" ,verifyToken , createConversation) ;
-router.get("/single/:id" , verifyToken , getSingleConversation) ;
-router.put("/:id" , verifyToken, updateConversation);
+router.get("/", verifyToken, getConversations);
+router.get("/check", verifyToken, checkExistingConversation); // Add this line
+router.post("/", verifyToken, createConversation);
+router.get("/single/:id", verifyToken, getSingleConversation);
+router.put("/:id", verifyToken, updateConversation);
 
 module.exports = router;

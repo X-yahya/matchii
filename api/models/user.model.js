@@ -64,7 +64,7 @@ const userSchema = new Schema({
       type: mongoose.Schema.Types.ObjectId, 
       ref: 'User' 
     }],
-    successRate: { type: Number, default: 100 } // Percentage
+    successRate: { type: Number, default: "NULL" } // Percentage
   },
   }, { timestamps: true });
 

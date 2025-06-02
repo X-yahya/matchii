@@ -92,12 +92,13 @@ const getProposals = async (req, res, next) => {
     }
 };
 
+// Enhanced updateProposalStatus with better team management
 const updateProposalStatus = async (req, res, next) => {
     try {
         const proposal = await Proposal.findById(req.params.id)
             .populate({
                 path: 'projectId',
-                select: 'userId status team'
+                select: 'userId status team budget'
             })
             .populate({
                 path: 'freelancerId',
@@ -112,14 +113,27 @@ const updateProposalStatus = async (req, res, next) => {
             return next(createError(403, "Unauthorized to update this proposal"));
         }
 
-        // Update proposal status
+        const { status, reason } = req.body;
+
+        // Update proposal status with optional reason
         const updatedProposal = await Proposal.findByIdAndUpdate(
             req.params.id,
-            { status: req.body.status },
+            { 
+                status: status,
+                ...(reason && { rejectionReason: reason }),
+                ...(status === 'accepted' && { 
+              
+                    
+                    acceptedAt: new Date() 
+                
+                }
+                ),
+                ...(status === 'rejected' && { rejectedAt: new Date() })
+            },
             { new: true, runValidators: true }
         );
 
-        if (req.body.status === 'accepted') {
+        if (status === 'accepted') {
             // Check if freelancer is already in the team
             const project = await Project.findById(proposal.projectId._id);
             const isAlreadyInTeam = project.team.some(
@@ -135,28 +149,163 @@ const updateProposalStatus = async (req, res, next) => {
                             team: {
                                 freelancerId: proposal.freelancerId._id,
                                 role: 'Contributor',
-                                joinedAt: new Date()
+                                joinedAt: new Date(),
+                                proposalId: proposal._id
                             }
                         },
-                        status: 'in_progress'
+                        // Only change to in_progress if it's currently open
+                        ...(project.status === 'open' && { status: 'in_progress' })
                     }
                 );
             }
 
-            // Optionally reject other pending proposals from the same freelancer
-            // (if you want only one proposal per freelancer to be accepted)
-            // await Proposal.updateMany(
-            //     {
-            //         projectId: proposal.projectId._id,
-            //         freelancerId: proposal.freelancerId._id,
-            //         _id: { $ne: proposal._id },
-            //         status: 'pending'
-            //     },
-            //     { status: 'rejected' }
-            // );
+            // Update freelancer's stats for accepted proposal
+            await User.findByIdAndUpdate(
+                proposal.freelancerId._id,
+                {
+                    $inc: {
+                        'sellerStats.acceptedProposals': 1
+                    }
+                }
+            );
+            
+
+        } else if (status === 'rejected') {
+            // Remove from team if they were already added
+            await Project.findByIdAndUpdate(
+                proposal.projectId._id,
+                {
+                    $pull: { team: { freelancerId: proposal.freelancerId._id } }
+                }
+            );
+
+            // Update freelancer's stats for rejected proposal
+            await User.findByIdAndUpdate(
+                proposal.freelancerId._id,
+                {
+                    $inc: {
+                        'sellerStats.rejectedProposals': 1
+                    }
+                }
+            );
         }
 
+        // Calculate and update freelancer's acceptance rate
+        const freelancerProposals = await Proposal.find({ 
+            freelancerId: proposal.freelancerId._id 
+        });
+        
+        const accepted = freelancerProposals.filter(p => p.status === 'accepted').length;
+        const total = freelancerProposals.filter(p => p.status !== 'pending').length;
+        const acceptanceRate = total > 0 ? Math.round((accepted / total) * 100) : 0;
+
+        await User.findByIdAndUpdate(
+            proposal.freelancerId._id,
+            {
+                'sellerStats.acceptanceRate': acceptanceRate
+            }
+        );
+
         res.status(200).json(updatedProposal);
+    } catch (err) {
+        next(err);
+    }
+};
+
+// New function to get proposal details with enhanced info
+const getProposalDetails = async (req, res, next) => {
+    try {
+        const proposal = await Proposal.findById(req.params.id)
+            .populate({
+                path: 'projectId',
+                select: 'title budget duration status category description userId',
+                populate: {
+                    path: 'userId',
+                    select: 'username image country'
+                }
+            })
+            .populate({
+                path: 'freelancerId',
+                select: 'username image country sellerStats bio skills'
+            })
+            .populate({
+                path: 'clientId',
+                select: 'username image country clientStats'
+            });
+
+        if (!proposal) {
+            return next(createError(404, "Proposal not found"));
+        }
+
+        // Check if user has permission to view this proposal
+        const isFreelancer = proposal.freelancerId._id.toString() === req.userId;
+        const isClient = proposal.clientId._id.toString() === req.userId;
+
+        if (!isFreelancer && !isClient) {
+            return next(createError(403, "Not authorized to view this proposal"));
+        }
+
+        res.status(200).json(proposal);
+    } catch (err) {
+        next(err);
+    }
+};
+
+const getFreelancerProposalStats = async (req, res, next) => {
+    try {
+        const freelancerId = req.params.freelancerId || req.userId;
+
+        if (freelancerId !== req.userId) {
+            const proposal = await Proposal.findOne({
+                freelancerId: freelancerId,
+                clientId: req.userId
+            });
+            
+            if (!proposal) {
+                return next(createError(403, "Not authorized to view these stats"));
+            }
+        }
+
+        const stats = await Proposal.aggregate([
+            { $match: { freelancerId: require('mongoose').Types.ObjectId(freelancerId) } },
+            {
+                $group: {
+                    _id: null,
+                    totalProposals: { $sum: 1 },
+                    acceptedProposals: {
+                        $sum: { $cond: [{ $eq: ["$status", "accepted"] }, 1, 0] }
+                    },
+                    rejectedProposals: {
+                        $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] }
+                    },
+                    pendingProposals: {
+                        $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] }
+                    },
+                    completedProposals: {
+                        $sum: { $cond: ["$isCompleted", 1, 0] }
+                    }
+                }
+            }
+        ]);
+
+        const result = stats[0] || {
+            totalProposals: 0,
+            acceptedProposals: 0,
+            rejectedProposals: 0,
+            pendingProposals: 0,
+            completedProposals: 0
+        };
+
+        // Calculate rates
+        result.acceptanceRate = result.totalProposals > 0 
+            ? Math.round((result.acceptedProposals / result.totalProposals) * 100) 
+            : 0;
+        
+        result.completionRate = result.acceptedProposals > 0 
+            ? Math.round((result.completedProposals / result.acceptedProposals) * 100) 
+            : 0;
+
+        res.status(200).json(result);
     } catch (err) {
         next(err);
     }
@@ -166,5 +315,7 @@ module.exports = {
     checkProposal,
     createProposal,
     getProposals,
-    updateProposalStatus
+    updateProposalStatus,
+    getProposalDetails,
+    getFreelancerProposalStats
 };

@@ -73,7 +73,7 @@ const updateUser = async (req, res) => {
     user.isSeller = isSeller !== undefined ? isSeller : user.isSeller;
 
     if (role === "client") {
-      user.isSeller = false;
+      user.isSeller = !isSeller;
     }
 
     await user.save();

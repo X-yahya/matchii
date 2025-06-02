@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import newRequest from '../../utils/newRequest';
 import { motion, AnimatePresence } from 'framer-motion';
+import ProposalDetailsModal from './ProposalDetailsModal';
+import RoleSelectionModal from './RoleSelectionModal';
 
 const WorkDashboard = () => {
   const queryClient = useQueryClient();
@@ -12,29 +14,27 @@ const WorkDashboard = () => {
   const isSeller = currentUser.isSeller;
 
   // Conversation functionality
-const createConvoMutation = useMutation({
-  mutationFn: (to) => newRequest.post('/conversations', { to }),
-  onSuccess: (data) => {
-    // For new conversations, navigate to the new conversation ID
-    navigate(`/messages`);
-  },
-  onError: (error) => {
-    
+  const createConvoMutation = useMutation({
+    mutationFn: (to) => newRequest.post('/conversations', { to }),
+    onSuccess: (data) => {
       navigate(`/messages`);
-    
-  }
-});
+    },
+    onError: (error) => {
+      navigate(`/messages`);
+    }
+  });
+  
   const handleMessage = (freelancerId) => {
     createConvoMutation.mutate(freelancerId);
   };
 
-  // Main data query
+  // Main data query (updated to fetch required roles)
   const { isLoading, error, data } = useQuery({
     queryKey: ['workData', isSeller],
     queryFn: () =>
       isSeller
         ? newRequest.get('/proposals').then(res => res.data)
-        : newRequest.get('/projects/myprojects').then(res => res.data),
+        : newRequest.get('/projects/myprojects?populate=requiredRoles').then(res => res.data),
     select: rawData => {
       if (isSeller) {
         return {
@@ -49,10 +49,10 @@ const createConvoMutation = useMutation({
     }
   });
 
-  // Proposal status mutation
+  // Proposal status mutation (updated to include roleId)
   const updateProposalStatus = useMutation({
-    mutationFn: ({ proposalId, status }) =>
-      newRequest.patch(`/proposals/${proposalId}/status`, { status }),
+    mutationFn: ({ proposalId, status, roleId }) =>
+      newRequest.patch(`/proposals/${proposalId}/status`, { status, roleId }),
     onSuccess: () => queryClient.invalidateQueries(['workData', isSeller])
   });
 
@@ -151,58 +151,7 @@ const ErrorState = ({ error }) => (
 );
 
 // Proposal Section Component
-const ProposalSection = ({ proposals }) => (
-  <div className="space-y-4">
-    {proposals && proposals.length > 0 ? (
-      proposals.map(proposal => (
-        <motion.div
-          key={proposal._id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {proposal.project?.title || proposal.projectId?.title}
-              </h3>
-              <p className="text-base text-gray-600 mt-2 line-clamp-2">
-                {proposal.coverLetter}
-              </p>
-              <div className="flex items-center gap-4 mt-4">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  proposal.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                  proposal.status === 'pending' ? 'bg-blue-100 text-blue-700' :
-                  'bg-red-100 text-red-700'
-                }`}>
-                  {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
-                </span>
-                <span className="text-base text-gray-500">
-                  Budget: ${proposal.project?.budget || proposal.projectId?.budget}
-                </span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-sm text-gray-500">
-                {new Date(proposal.createdAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
-              </span>
-            </div>
-          </div>
-        </motion.div>
-      ))
-    ) : (
-      <div className="text-center py-12">
-        <p className="text-gray-500 text-lg">No proposals found</p>
-      </div>
-    )}
-  </div>
-);
 
-// Project Section Component
 const ProjectSection = ({ 
   projects, 
   updateProposalStatus, 
@@ -211,7 +160,8 @@ const ProjectSection = ({
 }) => {
   const queryClient = useQueryClient();
   const [selectedProposal, setSelectedProposal] = useState(null);
-
+  const [selectedRoleForProposal, setSelectedRoleForProposal] = useState(null);
+  
   // Project status update mutation
   const updateProjectStatus = useMutation({
     mutationFn: ({ projectId, status }) => 
@@ -235,6 +185,16 @@ const ProjectSection = ({
     }
   };
 
+  // Handle role selection for proposal
+  const handleRoleSelection = (proposal, roleId) => {
+    updateProposalStatus.mutate({
+      proposalId: proposal._id,
+      status: 'accepted',
+      roleId
+    });
+    setSelectedRoleForProposal(null);
+  };
+
   return (
     <div className="space-y-6">
       {projects && projects.length > 0 ? (
@@ -243,6 +203,7 @@ const ProjectSection = ({
           const pending = project.proposals?.filter(p => p.status === 'pending') || [];
           const rejected = project.proposals?.filter(p => p.status === 'rejected') || [];
           const statusAction = getStatusAction(project.status);
+          const openRoles = project.requiredRoles?.filter(role => !role.filled) || [];
 
           return (
             <motion.div
@@ -316,6 +277,53 @@ const ProjectSection = ({
                 </div>
               </div>
 
+              {/* Required Roles Section */}
+              {project.requiredRoles && project.requiredRoles.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-gray-800">Required Roles</h4>
+                    <span className="text-sm text-gray-500">
+                      {project.requiredRoles.filter(r => r.filled).length}/
+                      {project.requiredRoles.length} filled
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {project.requiredRoles.map(role => (
+                      <div 
+                        key={role._id} 
+                        className={`p-4 rounded-xl border ${
+                          role.filled 
+                            ? 'bg-green-50 border-green-200' 
+                            : 'bg-yellow-50 border-yellow-200'
+                        }`}
+                      >
+                        <div className="flex justify-between">
+                          <h5 className="font-medium">{role.name}</h5>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            role.filled 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {role.filled ? 'Filled' : 'Open'}
+                          </span>
+                        </div>
+                        {role.description && (
+                          <p className="text-sm text-gray-600 mt-1">{role.description}</p>
+                        )}
+                        <div className="mt-2 flex justify-between items-center">
+                          <span className="text-sm font-medium">${role.budget}</span>
+                          {!role.filled && (
+                            <span className="text-xs text-gray-500">
+                              {pending.filter(p => p.role?._id === role._id).length || 0} applicants
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Team Members Section */}
               {project.team && project.team.length > 0 && (
                 <div className="mb-6">
@@ -334,8 +342,9 @@ const ProjectSection = ({
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{member.freelancerId?.username}</p>
                           <p className="text-sm text-gray-500">{member.freelancerId?.country}</p>
+                          {/* Show assigned role */}
                           <p className="text-xs text-gray-400">
-                            Role: {member.role || 'Contributor'} • Joined: {new Date(member.joinedAt).toLocaleDateString()}
+                            Role: {member.role} • Joined: {new Date(member.joinedAt).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -423,14 +432,20 @@ const ProjectSection = ({
                             {proposal.status === 'pending' && (
                               <div className="flex gap-2 ml-auto">
                                 <button
-                                  onClick={() => updateProposalStatus.mutate({
-                                    proposalId: proposal._id,
-                                    status: 'accepted'
-                                  })}
-                                  disabled={updateProposalStatus.isLoading}
-                                  className="text-sm px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                                  onClick={() => {
+                                    setSelectedRoleForProposal({
+                                      proposal,
+                                      projectId: project._id
+                                    });
+                                  }}
+                                  disabled={openRoles.length === 0}
+                                  className={`text-sm px-4 py-2 rounded-lg font-medium transition-colors ${
+                                    openRoles.length > 0
+                                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  }`}
                                 >
-                                  Accept
+                                  {openRoles.length > 0 ? 'Accept' : 'No Roles Available'}
                                 </button>
                                 <button
                                   onClick={() => updateProposalStatus.mutate({
@@ -478,130 +493,37 @@ const ProjectSection = ({
       {/* Proposal Details Modal */}
       <AnimatePresence>
         {selectedProposal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-            onClick={() => setSelectedProposal(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl w-full max-w-2xl max-h-screen overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Proposal Details</h2>
-                  <button
-                    onClick={() => setSelectedProposal(null)}
-                    className="text-gray-500 hover:text-gray-700 text-xl"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="flex gap-6 mb-8">
-                  <img
-                    src={selectedProposal.freelancerId?.image || '/default-avatar.png'}
-                    alt={selectedProposal.freelancerId?.username}
-                    className="w-24 h-24 rounded-2xl object-cover border-2 border-white shadow-sm"
-                  />
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      {selectedProposal.freelancerId?.username}
-                    </h3>
-                    <p className="text-gray-600 mt-1">{selectedProposal.freelancerId?.country}</p>
-                    <div className="flex gap-4 mt-3">
-                      <div>
-                        <span className="text-sm text-gray-500">Success Rate</span>
-                        <p className="font-medium">
-                          {selectedProposal.freelancerId?.sellerStats?.successRate || 0}%
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Projects Completed</span>
-                        <p className="font-medium">
-                          {selectedProposal.freelancerId?.sellerStats?.completedProjects || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Cover Letter</h4>
-                    <div className="prose max-w-full">
-                      <p className="text-gray-600 whitespace-pre-line break-words leading-relaxed">
-                        {selectedProposal.coverLetter.split('\n').map((line, index) => (
-                          <span key={index}>
-                            {line}
-                            <br />
-                          </span>
-                        ))}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Proposal Information</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-xl">
-                        <p className="text-sm text-gray-500">Submitted</p>
-                        <p className="font-medium">
-                          {new Date(selectedProposal.createdAt).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-xl">
-                        <p className="text-sm text-gray-500">Status</p>
-                        <p className="font-medium capitalize">{selectedProposal.status}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedProposal.status === 'pending' && (
-                    <div className="flex gap-3 pt-4">
-                      <button
-                        onClick={() => {
-                          updateProposalStatus.mutate({
-                            proposalId: selectedProposal._id,
-                            status: 'accepted'
-                          });
-                          setSelectedProposal(null);
-                        }}
-                        disabled={updateProposalStatus.isLoading}
-                        className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
-                      >
-                        Accept Proposal
-                      </button>
-                      <button
-                        onClick={() => {
-                          updateProposalStatus.mutate({
-                            proposalId: selectedProposal._id,
-                            status: 'rejected'
-                          });
-                          setSelectedProposal(null);
-                        }}
-                        disabled={updateProposalStatus.isLoading}
-                        className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
-                      >
-                        Decline Proposal
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
+          <ProposalDetailsModal
+            proposal={selectedProposal}
+            onClose={() => setSelectedProposal(null)}
+            onAccept={() => {
+              setSelectedRoleForProposal({
+                proposal: selectedProposal,
+                projectId: selectedProposal.projectId
+              });
+              setSelectedProposal(null);
+            }}
+            onDecline={() => {
+              updateProposalStatus.mutate({
+                proposalId: selectedProposal._id,
+                status: 'rejected'
+              });
+              setSelectedProposal(null);
+            }}
+            loading={updateProposalStatus.isLoading}
+          />
         )}
       </AnimatePresence>
+
+      {/* Role Selection Modal */}
+      {selectedRoleForProposal && (
+        <RoleSelectionModal
+          selectedRoleForProposal={selectedRoleForProposal}
+          projects={projects}
+          handleRoleSelection={handleRoleSelection}
+          onClose={() => setSelectedRoleForProposal(null)}
+        />
+      )}
     </div>
   );
 };

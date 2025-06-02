@@ -2,18 +2,27 @@ const mongoose = require("mongoose");
 
 const { Schema } = mongoose;
 
+const PlanSchema = new Schema({
+  name: { type: String, required: true },
+  price: { type: Number, required: true },
+  deliveryDays: { type: Number, required: true },
+  revisions: { type: Number, required: false },
+  features: { type: [String], required: true }
+});
+
 const GigSchema = new Schema(
   {
     userId: {
       type: String,
       required: true,
     },
+
     title: {
       type: String,
       required: true,
       trim: true,
     },
-    category: {
+    category: { 
       type: String,
       required: true,
     },
@@ -22,36 +31,7 @@ const GigSchema = new Schema(
       required: true,
     },
     plans: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        price: {
-          type: Number,
-          required: true,
-        },
-        deliveryDays: {
-          type: Number,
-          required: true,
-        },
-        features: {
-          type: [String],
-          required: true,
-        },
-      },
-    ],
-    faq: [
-      {
-        question: {
-          type: String,
-          required: true,
-        },
-        answer: {
-          type: String,
-          required: true,
-        },
-      },
+      PlanSchema
     ],
     coverImage: {
       type: String,
@@ -71,6 +51,11 @@ const GigSchema = new Schema(
     sales: {
       type: Number,
       default: 0,
+    },
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
     },
   },
   { timestamps: true }

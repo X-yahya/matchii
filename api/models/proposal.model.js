@@ -28,10 +28,14 @@ const ProposalSchema = new Schema({
     enum: ['pending', 'accepted', 'rejected'],
     default: 'pending'
   },
-  isCompleted: {
-    type: Boolean,
-    default: false,
+  assignedRoleId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project.requiredRoles',
+    default: null
   },
+  rejectionReason: String,
+  acceptedAt: Date,
+  rejectedAt: Date
 }, { timestamps: true });
 
 module.exports = mongoose.model("Proposal", ProposalSchema);

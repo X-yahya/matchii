@@ -1,5 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const {createServer} = require("http");
+const {Server} = require("socket.io");
 dotenv = require('dotenv');
 const cors = require('cors');
 const userRoute = require("./routes/user.route")
@@ -15,13 +17,41 @@ proposalRoute = require("./routes/proposal.route.js") ;
 const cookieParser = require("cookie-parser") ;
 
 
+
 const app = express(); 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174'],
   credentials: true, 
 }));
+
+const httpServer = createServer();
+const io = new Server(httpServer, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"]
+  }
+});
 app.use(express.json());
 app.use(cookieParser());
+io.on('connection', (socket) => {
+  console.log('A user connected');
+  
+  socket.on('join-conversations', (userId) => {
+    socket.join(userId);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected');
+  });
+});
+
+// Attach socket instance to app
+app.set('socketio', io);
+
+// Use httpServer instead of app for listening
+httpServer.listen(9000, () => {
+  console.log("Backend server is running!");
+});
 
 dotenv.config() ;
 

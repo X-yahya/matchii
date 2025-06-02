@@ -1,13 +1,8 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-// import newRequest from '../../../utils/newRequest';
-// import ProposalDetailsModal from './ProposalDetailsModal';
-// import RoleSelectionModal from './RoleSelectionModal';
-import newRequest from '../../utils/newRequest';
-import ProposalDetailsModal from '../ProposalDetailsModel/ProposalDetailsModel';
-import RoleSelectionModal from '../RoleSeclectionModal/RoleSelectionModal';
+import RoleSelectionModal from './RoleSelectionModal'; // Make sure this import is correct
+
 const ProjectSection = ({ 
   projects, 
   updateProposalStatus, 
@@ -59,6 +54,7 @@ const ProjectSection = ({
           const pending = project.proposals?.filter(p => p.status === 'pending') || [];
           const rejected = project.proposals?.filter(p => p.status === 'rejected') || [];
           const statusAction = getStatusAction(project.status);
+          const openRoles = project.requiredRoles?.filter(role => !role.filled) || [];
 
           return (
             <motion.div
@@ -197,6 +193,7 @@ const ProjectSection = ({
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{member.freelancerId?.username}</p>
                           <p className="text-sm text-gray-500">{member.freelancerId?.country}</p>
+                          {/* Show assigned role */}
                           <p className="text-xs text-gray-400">
                             Role: {member.role} • Joined: {new Date(member.joinedAt).toLocaleDateString()}
                           </p>
@@ -292,9 +289,14 @@ const ProjectSection = ({
                                       projectId: project._id
                                     });
                                   }}
-                                  className="text-sm px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                                  disabled={openRoles.length === 0}
+                                  className={`text-sm px-4 py-2 rounded-lg font-medium transition-colors ${
+                                    openRoles.length > 0
+                                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  }`}
                                 >
-                                  Accept
+                                  {openRoles.length > 0 ? 'Accept' : 'No Roles Available'}
                                 </button>
                                 <button
                                   onClick={() => updateProposalStatus.mutate({
@@ -332,27 +334,25 @@ const ProjectSection = ({
       ) : (
         <div className="text-center py-12">
           <svg className="w-20 h-20 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H5a2 2 0 00-2 2v2M7 7h10" />
           </svg>
           <p className="text-gray-500 text-lg font-medium mb-2">No projects found</p>
           <p className="text-gray-400">Create your first project to get started</p>
         </div>
       )}
 
-      {/* Modals */}
-      <ProposalDetailsModal
-        selectedProposal={selectedProposal}
-        setSelectedProposal={setSelectedProposal}
-        updateProposalStatus={updateProposalStatus}
-        setSelectedRoleForProposal={setSelectedRoleForProposal}
-      />
+      {/* Proposal Details Modal */}
 
-      <RoleSelectionModal
-        selectedRoleForProposal={selectedRoleForProposal}
-        setSelectedRoleForProposal={setSelectedRoleForProposal}
-        projects={projects}
-        handleRoleSelection={handleRoleSelection}
-      />
+
+      {/* Role Selection Modal */}
+      {selectedRoleForProposal && (
+        <RoleSelectionModal
+          selectedRoleForProposal={selectedRoleForProposal}
+          projects={projects}
+          handleRoleSelection={handleRoleSelection}
+          onClose={() => setSelectedRoleForProposal(null)}
+        />
+      )}
     </div>
   );
 };
