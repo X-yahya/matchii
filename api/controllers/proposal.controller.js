@@ -94,122 +94,119 @@ const getProposals = async (req, res, next) => {
 
 // Enhanced updateProposalStatus with better team management
 const updateProposalStatus = async (req, res, next) => {
-    try {
-        const proposal = await Proposal.findById(req.params.id)
-            .populate({
-                path: 'projectId',
-                select: 'userId status team budget'
-            })
-            .populate({
-                path: 'freelancerId',
-                select: '_id username image country sellerStats'
-            });
+  try {
+    const proposal = await Proposal.findById(req.params.id)
+      .populate({
+        path: 'projectId',
+        select: 'userId status team budget requiredRoles'
+      })
+      .populate({
+        path: 'freelancerId',
+        select: '_id username image country sellerStats'
+      });
 
-        if (!proposal) {
-            return next(createError(404, "Proposal not found"));
-        }
-
-        if (proposal.projectId.userId.toString() !== req.userId) {
-            return next(createError(403, "Unauthorized to update this proposal"));
-        }
-
-        const { status, reason } = req.body;
-
-        // Update proposal status with optional reason
-        const updatedProposal = await Proposal.findByIdAndUpdate(
-            req.params.id,
-            { 
-                status: status,
-                ...(reason && { rejectionReason: reason }),
-                ...(status === 'accepted' && { 
-              
-                    
-                    acceptedAt: new Date() 
-                
-                }
-                ),
-                ...(status === 'rejected' && { rejectedAt: new Date() })
-            },
-            { new: true, runValidators: true }
-        );
-
-        if (status === 'accepted') {
-            // Check if freelancer is already in the team
-            const project = await Project.findById(proposal.projectId._id);
-            const isAlreadyInTeam = project.team.some(
-                member => member.freelancerId.toString() === proposal.freelancerId._id.toString()
-            );
-
-            if (!isAlreadyInTeam) {
-                // Add freelancer to project team
-                await Project.findByIdAndUpdate(
-                    proposal.projectId._id,
-                    {
-                        $addToSet: {
-                            team: {
-                                freelancerId: proposal.freelancerId._id,
-                                role: 'Contributor',
-                                joinedAt: new Date(),
-                                proposalId: proposal._id
-                            }
-                        },
-                        // Only change to in_progress if it's currently open
-                        ...(project.status === 'open' && { status: 'in_progress' })
-                    }
-                );
-            }
-
-            // Update freelancer's stats for accepted proposal
-            await User.findByIdAndUpdate(
-                proposal.freelancerId._id,
-                {
-                    $inc: {
-                        'sellerStats.acceptedProposals': 1
-                    }
-                }
-            );
-            
-
-        } else if (status === 'rejected') {
-            // Remove from team if they were already added
-            await Project.findByIdAndUpdate(
-                proposal.projectId._id,
-                {
-                    $pull: { team: { freelancerId: proposal.freelancerId._id } }
-                }
-            );
-
-            // Update freelancer's stats for rejected proposal
-            await User.findByIdAndUpdate(
-                proposal.freelancerId._id,
-                {
-                    $inc: {
-                        'sellerStats.rejectedProposals': 1
-                    }
-                }
-            );
-        }
-
-        // Calculate and update freelancer's acceptance rate
-        const freelancerProposals = await Proposal.find({ 
-            freelancerId: proposal.freelancerId._id 
-        });
-        
-        const accepted = freelancerProposals.filter(p => p.status === 'accepted').length;
-        const total = freelancerProposals.filter(p => p.status !== 'pending').length;
-        const acceptanceRate = total > 0 ? Math.round((accepted / total) * 100) : 0;
-
-        await User.findByIdAndUpdate(
-            proposal.freelancerId._id,
-            {
-                'sellerStats.acceptanceRate': acceptanceRate
-            }
-        );
-
-        res.status(200).json(updatedProposal);
-    } catch (err) {
-        next(err);
+    if (!proposal) {
+      return next(createError(404, "Proposal not found"));
     }
+
+    if (proposal.projectId.userId.toString() !== req.userId) {
+      return next(createError(403, "Unauthorized to update this proposal"));
+    }
+
+    const { status, reason, roleId } = req.body;
+
+    // Update proposal status with optional reason
+    const updateData = {
+      status: status,
+      ...(reason && { rejectionReason: reason }),
+      ...(status === 'accepted' && { 
+        acceptedAt: new Date(),
+        ...(roleId && { assignedRoleId: roleId })
+      }),
+      ...(status === 'rejected' && { rejectedAt: new Date() })
+    };
+
+    const updatedProposal = await Proposal.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (status === 'accepted') {
+      // Find the project
+      const project = await Project.findById(proposal.projectId._id);
+
+      // If roleId is provided, assign to specific role
+      if (roleId) {
+        const role = project.requiredRoles.id(roleId);
+        if (role && !role.filled) {
+          project.fillRole(roleId, proposal.freelancerId._id, proposal._id);
+          await project.save();
+        }
+      }
+
+      // Update project status if needed
+      if (project.status === 'open') {
+        project.status = 'in_progress';
+        await project.save();
+      }
+
+      // Update freelancer's stats for accepted proposal
+      await User.findByIdAndUpdate(
+        proposal.freelancerId._id,
+        {
+          $inc: {
+            'sellerStats.acceptedProposals': 1
+          }
+        }
+      );
+    } else if (status === 'rejected') {
+      // Remove from team if they were already added
+      await Project.findByIdAndUpdate(
+        proposal.projectId._id,
+        {
+          $pull: { team: { freelancerId: proposal.freelancerId._id } }
+        }
+      );
+
+      // Optionally unfill the role if needed
+      if (roleId) {
+        await Project.updateOne(
+          { _id: proposal.projectId._id, "requiredRoles._id": roleId },
+          { $set: { "requiredRoles.$.filled": false, "requiredRoles.$.freelancerId": null, "requiredRoles.$.filledBy": null } }
+        );
+      }
+
+      // Update freelancer's stats for rejected proposal
+      await User.findByIdAndUpdate(
+        proposal.freelancerId._id,
+        {
+          $inc: {
+            'sellerStats.rejectedProposals': 1
+          }
+        }
+      );
+    }
+
+    // Calculate and update freelancer's acceptance rate
+    const freelancerProposals = await Proposal.find({ 
+      freelancerId: proposal.freelancerId._id 
+    });
+    const accepted = freelancerProposals.filter(p => p.status === 'accepted').length;
+    const total = freelancerProposals.filter(p => p.status !== 'pending').length;
+    const acceptanceRate = total > 0 ? Math.round((accepted / total) * 100) : 0;
+
+    await User.findByIdAndUpdate(
+      proposal.freelancerId._id,
+      {
+        'sellerStats.acceptanceRate': acceptanceRate
+      }
+    );
+
+    res.status(200).json(updatedProposal);
+  } catch (err) {
+    next(err);
+  }
 };
 
 // New function to get proposal details with enhanced info

@@ -71,10 +71,9 @@ projectSchema.methods.fillRole = function(roleId, freelancerId, proposalId) {
     role.filledBy = freelancerId;
     this.team.push({
       freelancerId,
-      role: role.name,
+      role: role.name,  // Use the role name from requiredRoles
       assignedRoleId: roleId,
-      proposalId,
-      joinedAt: new Date()
+      proposalId
     });
     return true;
   }

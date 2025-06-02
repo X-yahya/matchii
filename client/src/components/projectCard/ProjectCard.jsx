@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -18,9 +17,8 @@ import {
   FiCheckCircle,
   FiAlertCircle
 } from 'react-icons/fi';
-// import newRequest from '../utils/newRequest';
-import newRequest from '../../utils/newRequest'; // Adjust the import path as necessary
-// Enhanced ProjectCard Component
+import newRequest from '../../utils/newRequest';
+
 const ProjectCard = ({ project }) => {
   const userId = project.userId?._id || project.userId;
   
@@ -52,10 +50,10 @@ const ProjectCard = ({ project }) => {
   return (
     <motion.div 
       whileHover={{ scale: 1.02 }}
-      className="group relative bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
+      className="group relative bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full"
     >
-      {/* Image Section with Overlay */}
-      <div className="relative h-48 overflow-hidden">
+      {/* Image Section with Fixed Height */}
+      <div className="relative h-48 overflow-hidden flex-shrink-0">
         <img
           src={project.coverImage || "/default-image.jpg"}
           alt={project.title}
@@ -90,21 +88,23 @@ const ProjectCard = ({ project }) => {
         </div>
       </div>
 
-      {/* Content Section */}
-      <div className="p-4 space-y-4">
-        {/* Title & Description */}
-        <div>
-          <h3 className="text-lg font-semibold line-clamp-2 mb-2">
+      {/* Content Section with Flexible Height */}
+      <div className="flex flex-col flex-1 p-4 space-y-4">
+        {/* Title & Description with Fixed Height */}
+        <div className="space-y-2 flex-shrink-0">
+          <h3 className="text-lg font-semibold line-clamp-2">
             {project.title}
           </h3>
-          <p className="text-gray-600 text-sm line-clamp-3">
-            {project.description}
-          </p>
+          <div className="h-[72px] overflow-y-auto">
+            <p className="text-gray-600 text-sm pr-2">
+              {project.description}
+            </p>
+          </div>
         </div>
 
         {/* Category */}
         {project.category && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <FiBriefcase className="w-4 h-4 text-gray-500" />
             <span className="text-sm text-gray-600 capitalize">
               {project.category.replace('-', ' ')}
@@ -112,52 +112,49 @@ const ProjectCard = ({ project }) => {
           </div>
         )}
 
-        {/* Roles Section */}
+        {/* Roles Section with Scrollable Content */}
         {project.requiredRoles && project.requiredRoles.length > 0 && (
-          <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-            <div className="flex items-center justify-between text-sm">
+          <div className="bg-gray-50 rounded-lg p-3 space-y-2 flex flex-col flex-1 min-h-[120px]">
+            <div className="flex items-center justify-between text-sm flex-shrink-0">
               <span className="font-medium text-gray-700">Required Roles</span>
               <span className="text-gray-500">{filledRoles}/{totalRoles} filled</span>
             </div>
             
             {/* Roles Progress Bar */}
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 rounded-full h-2 flex-shrink-0">
               <div 
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${totalRoles > 0 ? (filledRoles / totalRoles) * 100 : 0}%` }}
               />
             </div>
 
-            {/* First few roles preview */}
-            <div className="space-y-1">
-              {project.requiredRoles.slice(0, 2).map((role, index) => (
-                <div key={index} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    {role.filled ? (
-                      <FiCheckCircle className="w-3 h-3 text-green-500" />
-                    ) : (
-                      <FiAlertCircle className="w-3 h-3 text-orange-500" />
+            {/* Scrollable Roles List */}
+            <div className="overflow-y-auto flex-1 min-h-0">
+              <div className="space-y-1 pr-1">
+                {project.requiredRoles.map((role, index) => (
+                  <div key={index} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      {role.filled ? (
+                        <FiCheckCircle className="w-3 h-3 text-green-500" />
+                      ) : (
+                        <FiAlertCircle className="w-3 h-3 text-orange-500" />
+                      )}
+                      <span className={role.filled ? "text-gray-600" : "text-gray-900 font-medium"}>
+                        {role.name}
+                      </span>
+                    </div>
+                    {role.budget > 0 && (
+                      <span className="text-gray-500">{role.budget.toLocaleString()} dt</span>
                     )}
-                    <span className={role.filled ? "text-gray-600" : "text-gray-900 font-medium"}>
-                      {role.name}
-                    </span>
                   </div>
-                  {role.budget > 0 && (
-                    <span className="text-gray-500">{role.budget.toLocaleString()} dt</span>
-                  )}
-                </div>
-              ))}
-              {project.requiredRoles.length > 2 && (
-                <div className="text-xs text-gray-500 text-center pt-1">
-                  +{project.requiredRoles.length - 2} more roles
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           </div>
         )}
 
         {/* Metadata Grid */}
-        <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="grid grid-cols-2 gap-3 text-sm flex-shrink-0">
           <div className="flex items-center gap-2">
             <FiDollarSign className="w-4 h-4 text-blue-600" />
             <div className="flex flex-col">
@@ -180,13 +177,13 @@ const ProjectCard = ({ project }) => {
           
           <div className="flex items-center gap-2">
             <FiUsers className="w-4 h-4 text-blue-600" />
-            <span>{project.team?.length || 0} team members</span>
+            <span>{project.team?.length || 0} members</span>
           </div>
         </div>
 
         {/* Proposals Count */}
         {project.proposals && project.proposals.length > 0 && (
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 flex-shrink-0">
             <FiUser className="w-4 h-4" />
             <span>{project.proposals.length} proposal{project.proposals.length !== 1 ? 's' : ''}</span>
           </div>
@@ -195,7 +192,7 @@ const ProjectCard = ({ project }) => {
         {/* View Button */}
         <Link
           to={`/projects/${project._id}`}
-          className="block mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2 rounded-lg transition-colors flex items-center justify-center gap-2 flex-shrink-0"
         >
           View Project
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -213,7 +210,5 @@ const ProjectCard = ({ project }) => {
     </motion.div>
   );
 };
-
-
 
 export default ProjectCard;

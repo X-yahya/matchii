@@ -37,9 +37,9 @@ const ProjectSection = ({
   };
 
   // Handle role selection for proposal
-  const handleRoleSelection = (proposal, roleId) => {
+  const handleRoleSelection = (roleId) => {
     updateProposalStatus.mutate({
-      proposalId: proposal._id,
+      proposalId: selectedRoleForProposal.proposal._id,
       status: 'accepted',
       roleId
     });
