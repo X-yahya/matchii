@@ -379,7 +379,7 @@ export default function AddProject() {
                       />
                     </div>
                     <div>
-                      <label className="block mb-1 text-sm font-medium">Budget ($)</label>
+                      <label className="block mb-1 text-sm font-medium">Budget (dt)</label>
                       <input
                         type="number"
                         min="0"
