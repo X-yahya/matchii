@@ -99,25 +99,38 @@ const getProjects = async (req, res, next) => {
 };
 
 const getMyProjects = async (req, res, next) => {
-    try {
-        const projects = await Project.find({ userId: req.userId })
-            .populate({
-                path: 'team.freelancerId',
-                select: 'username image country sellerStats'
-            })
-            .populate({
-                path: 'proposals',
-                populate: {
-                    path: 'freelancerId',
-                    select: 'username image country sellerStats'
-                }
-            })
-            .sort({ createdAt: -1 });
+  try {
+    const projects = await Project.find({ userId: req.userId })
+      .populate({
+        path: 'team.freelancerId',
+        select: 'username image country sellerStats'
+      })
+      .populate({
+        path: 'proposals',
+        populate: {
+          path: 'freelancerId',
+          select: 'username image country sellerStats'
+        }
+      })
+      .sort({ createdAt: -1 });
 
-        res.status(200).json(projects);
-    } catch (err) {
-        next(err);
-    }
+    // Enhance proposals with role information
+    const enhancedProjects = projects.map(project => {
+      const projectObject = project.toObject();
+      projectObject.proposals = projectObject.proposals.map(proposal => {
+        const role = project.requiredRoles.id(proposal.appliedRoleId);
+        return {
+          ...proposal,
+          appliedRole: role ? role : null
+        };
+      });
+      return projectObject;
+    });
+
+    res.status(200).json(enhancedProjects);
+  } catch (err) {
+    next(err);
+  }
 };
 
 const updateProject = async (req, res, next) => {

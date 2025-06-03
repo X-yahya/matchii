@@ -4,106 +4,138 @@ const User = require("../models/user.model");
 const createError = require("../utils/createError");
 
 const checkProposal = async (req, res, next) => {
-    try {
-        const proposal = await Proposal.findOne({
-            projectId: req.params.projectId,
-            freelancerId: req.userId
-        });
+  try {
+    // Get all proposals for this project by current user
+    const proposals = await Proposal.find({
+      projectId: req.params.projectId,
+      freelancerId: req.userId
+    }).select('appliedRoleId status');
 
-        res.status(200).json(!!proposal);
-    } catch (err) {
-        next(err);
-    }
+    // Get project to check role status
+    const project = await Project.findById(req.params.projectId)
+      .select('requiredRoles');
+    
+    const result = proposals.map(proposal => {
+      const role = project.requiredRoles.id(proposal.appliedRoleId);
+      return {
+        appliedRoleId: proposal.appliedRoleId,
+        roleName: role?.name || 'Unknown Role',
+        status: proposal.status,
+        isRoleFilled: role?.filled || false
+      };
+    });
+
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
 };
 
+// Updated createProposal: roleId comes from req.body, checks for duplicate per role
 const createProposal = async (req, res, next) => {
-    try {
-        const project = await Project.findById(req.params.projectId);
-        if (!project) return next(createError(404, "Project not found"));
+  try {
+    const project = await Project.findById(req.params.projectId);
+    if (!project) return next(createError(404, "Project not found"));
 
-        if (project.userId.toString() === req.userId) {
-            return next(createError(403, "Can't propose to your own project"));
-        }
+    // Get roleId from URL parameters
+    const roleId = req.params.roleId;
+    
+    const role = project.requiredRoles.id(roleId);
+    if (!role) return next(createError(404, "Role not found"));
+    if (role.filled) return next(createError(400, "This role has been filled"));
 
-        // Check if user already has a proposal for this project
-        const existingProposal = await Proposal.findOne({
-            projectId: req.params.projectId,
-            freelancerId: req.userId
-        });
-
-        if (existingProposal) {
-            return next(createError(400, "You have already submitted a proposal for this project"));
-        }
-
-        const newProposal = await Proposal.create({
-            projectId: project._id,
-            freelancerId: req.userId,
-            clientId: project.userId,
-            coverLetter: req.body.coverLetter
-        });
-
-        // Add proposal to project's proposals array
-        try {
-            await Project.findByIdAndUpdate(
-                project._id,
-                { $push: { proposals: newProposal._id } },
-                { new: true }
-            );
-        } catch (updateErr) {
-            // Rollback proposal creation if linking fails
-            await Proposal.findByIdAndDelete(newProposal._id);
-            return next(createError(500, "Failed to link proposal to project"));
-        }
-
-        res.status(201).json(newProposal);
-    } catch (err) {
-        next(err);
+    if (project.userId.toString() === req.userId) {
+      return next(createError(403, "Can't propose to your own project"));
     }
+
+    // Check if user already has a proposal for this specific role
+    const existingProposal = await Proposal.findOne({
+      projectId: req.params.projectId,
+      freelancerId: req.userId,
+      appliedRoleId: roleId
+    });
+
+    if (existingProposal) {
+      return next(createError(400, "You have already submitted a proposal for this role"));
+    }
+
+    const newProposal = await Proposal.create({
+      projectId: project._id,
+      freelancerId: req.userId,
+      clientId: project.userId,
+      coverLetter: req.body.coverLetter,
+      appliedRoleId: roleId
+    });
+
+    // Add proposal to project's proposals array
+    try {
+      await Project.findByIdAndUpdate(
+        project._id,
+        { $push: { proposals: newProposal._id } },
+        { new: true }
+      );
+    } catch (updateErr) {
+      await Proposal.findByIdAndDelete(newProposal._id);
+      return next(createError(500, "Failed to link proposal to project"));
+    }
+
+    res.status(201).json(newProposal);
+  } catch (err) {
+    next(err);
+  }
 };
 
+// Enhanced getProposals: includes appliedRole object in response
 const getProposals = async (req, res, next) => {
-    try {
-        const baseQuery = req.isSeller
-            ? { freelancerId: req.userId }
-            : { clientId: req.userId };
+  try {
+    const baseQuery = req.isSeller
+      ? { freelancerId: req.userId }
+      : { clientId: req.userId };
 
-        const proposals = await Proposal.find(baseQuery)
-            .populate({
-                path: 'projectId',
-                select: 'title budget duration status category coverImage',
-                model: 'Project'
-            })
-            .populate({
-                path: req.isSeller ? 'clientId' : 'freelancerId',
-                select: 'username image country sellerStats',
-                model: 'User'
-            })
-            .sort({ createdAt: -1 });
+    const proposals = await Proposal.find(baseQuery)
+      .populate({
+        path: 'projectId',
+        select: 'title budget duration status category coverImage requiredRoles',
+        model: 'Project'
+      })
+      .populate({
+        path: req.isSeller ? 'clientId' : 'freelancerId',
+        select: 'username image country sellerStats',
+        model: 'User'
+      })
+      .sort({ createdAt: -1 });
 
-        const enhancedProposals = proposals.map(proposal => ({
-            ...proposal.toObject(),
-            project: proposal.projectId,
-            counterpart: req.isSeller ? proposal.clientId : proposal.freelancerId
-        }));
+    const enhancedProposals = proposals.map(proposal => {
+      const project = proposal.projectId;
+      let appliedRole = null;
+      
+      // Find the applied role details
+      if (proposal.appliedRoleId && project && project.requiredRoles) {
+        appliedRole = project.requiredRoles.find(
+          role => role._id.toString() === proposal.appliedRoleId.toString()
+        );
+      }
 
-        res.status(200).json(enhancedProposals);
-    } catch (err) {
-        next(err);
-    }
+      return {
+        ...proposal.toObject(),
+        project,
+        counterpart: req.isSeller ? proposal.clientId : proposal.freelancerId,
+        appliedRole // Add the role object to the proposal
+      };
+    });
+
+    res.status(200).json(enhancedProposals);
+  } catch (err) {
+    next(err);
+  }
 };
 
 // Enhanced updateProposalStatus with better team management
 const updateProposalStatus = async (req, res, next) => {
   try {
     const proposal = await Proposal.findById(req.params.id)
-      .populate({
-        path: 'projectId',
-        select: 'userId status team budget requiredRoles'
-      })
-      .populate({
-        path: 'freelancerId',
-        select: '_id username image country sellerStats'
-      });
+      .populate('projectId')
+      .populate('freelancerId');
 
     if (!proposal) {
       return next(createError(404, "Proposal not found"));
@@ -133,23 +165,38 @@ const updateProposalStatus = async (req, res, next) => {
     );
 
     if (status === 'accepted') {
-      // Find the project
       const project = await Project.findById(proposal.projectId._id);
 
-      // If roleId is provided, assign to specific role
-      if (roleId) {
-        const role = project.requiredRoles.id(roleId);
-        if (role && !role.filled) {
-          project.fillRole(roleId, proposal.freelancerId._id, proposal._id);
-          await project.save();
-        }
+      // Get the role the freelancer applied for
+      const appliedRole = project.requiredRoles.id(proposal.appliedRoleId);
+
+      if (!appliedRole) {
+        return next(createError(404, "The applied role no longer exists"));
       }
+
+      if (appliedRole.filled) {
+        return next(createError(400, "This role has already been filled"));
+      }
+
+      // Assign freelancer to role
+      appliedRole.filled = true;
+      appliedRole.filledBy = proposal.freelancerId._id;
+
+      // Add to team
+      project.team.push({
+        freelancerId: proposal.freelancerId._id,
+        role: appliedRole.name,
+        assignedRoleId: appliedRole._id,
+        proposalId: proposal._id,
+        joinedAt: new Date()
+      });
 
       // Update project status if needed
       if (project.status === 'open') {
         project.status = 'in_progress';
-        await project.save();
       }
+
+      await project.save();
 
       // Update freelancer's stats for accepted proposal
       await User.findByIdAndUpdate(

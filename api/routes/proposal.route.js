@@ -8,7 +8,12 @@ const {
     checkProposal
 } = require("../controllers/proposal.controller");
 
-router.post("/:projectId", verifyToken, createProposal);
+router.post(
+  "/:projectId/roles/:roleId",
+  verifyToken,
+  createProposal
+);
+
 router.get("/", verifyToken, getProposals);
 router.get("/check/:projectId", verifyToken, checkProposal);
 router.patch("/:id/status", verifyToken, updateProposalStatus);

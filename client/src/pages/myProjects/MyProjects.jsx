@@ -4,7 +4,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import newRequest from '../../utils/newRequest';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProposalDetailsModal from './ProposalDetailsModal';
-import RoleSelectionModal from './RoleSelectionModal';
 
 const WorkDashboard = () => {
   const queryClient = useQueryClient();
@@ -28,7 +27,7 @@ const WorkDashboard = () => {
     createConvoMutation.mutate(freelancerId);
   };
 
-  // Main data query (updated to fetch required roles)
+  // Main data query
   const { isLoading, error, data } = useQuery({
     queryKey: ['workData', isSeller],
     queryFn: () =>
@@ -51,8 +50,8 @@ const WorkDashboard = () => {
 
   // Update proposal status mutation
   const updateProposalStatus = useMutation({
-    mutationFn: ({ proposalId, status, roleId }) =>
-      newRequest.patch(`/proposals/${proposalId}/status`, { status, roleId }),
+    mutationFn: ({ proposalId, status }) =>
+      newRequest.patch(`/proposals/${proposalId}/status`, { status }),
     onSuccess: () => queryClient.invalidateQueries(['workData', isSeller])
   });
 
@@ -150,8 +149,7 @@ const ErrorState = ({ error }) => (
   </div>
 );
 
-// Proposal Section Component
-
+// Project Section Component
 const ProjectSection = ({ 
   projects, 
   updateProposalStatus, 
@@ -160,7 +158,6 @@ const ProjectSection = ({
 }) => {
   const queryClient = useQueryClient();
   const [selectedProposal, setSelectedProposal] = useState(null);
-  const [selectedRoleForProposal, setSelectedRoleForProposal] = useState(null);
   
   // Project status update mutation
   const updateProjectStatus = useMutation({
@@ -185,14 +182,22 @@ const ProjectSection = ({
     }
   };
 
-  // Handle role selection for proposal
-  const handleRoleSelection = (proposal, roleId) => {
+  // Handle proposal acceptance directly
+  const handleAccept = (proposal) => {
     updateProposalStatus.mutate({
       proposalId: proposal._id,
-      status: 'accepted',
-      roleId
+      status: 'accepted'
     });
-    setSelectedRoleForProposal(null);
+    setSelectedProposal(null); // Close modal after accepting
+  };
+
+  // Handle proposal rejection
+  const handleReject = (proposalId) => {
+    updateProposalStatus.mutate({
+      proposalId,
+      status: 'rejected'
+    });
+    setSelectedProposal(null); // Close modal after rejecting
   };
 
   return (
@@ -203,7 +208,6 @@ const ProjectSection = ({
           const pending = project.proposals?.filter(p => p.status === 'pending') || [];
           const rejected = project.proposals?.filter(p => p.status === 'rejected') || [];
           const statusAction = getStatusAction(project.status);
-          const openRoles = project.requiredRoles?.filter(role => !role.filled) || [];
 
           return (
             <motion.div
@@ -342,7 +346,6 @@ const ProjectSection = ({
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{member.freelancerId?.username}</p>
                           <p className="text-sm text-gray-500">{member.freelancerId?.country}</p>
-                          {/* Show assigned role */}
                           <p className="text-xs text-gray-400">
                             Role: {member.role} • Joined: {new Date(member.joinedAt).toLocaleDateString()}
                           </p>
@@ -432,26 +435,14 @@ const ProjectSection = ({
                             {proposal.status === 'pending' && (
                               <div className="flex gap-2 ml-auto">
                                 <button
-                                  onClick={() => {
-                                    setSelectedRoleForProposal({
-                                      proposal,
-                                      projectId: project._id
-                                    });
-                                  }}
-                                  disabled={openRoles.length === 0}
-                                  className={`text-sm px-4 py-2 rounded-lg font-medium transition-colors ${
-                                    openRoles.length > 0
-                                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                  }`}
+                                  onClick={() => handleAccept(proposal)}
+                                  disabled={updateProposalStatus.isLoading}
+                                  className="text-sm px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
                                 >
-                                  {openRoles.length > 0 ? 'Accept' : 'No Roles Available'}
+                                  Accept
                                 </button>
                                 <button
-                                  onClick={() => updateProposalStatus.mutate({
-                                    proposalId: proposal._id,
-                                    status: 'rejected'
-                                  })}
+                                  onClick={() => handleReject(proposal._id)}
                                   disabled={updateProposalStatus.isLoading}
                                   className="text-sm px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
                                 >
@@ -483,7 +474,7 @@ const ProjectSection = ({
       ) : (
         <div className="text-center py-12">
           <svg className="w-20 h-20 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 002 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H5a2 2 0 00-2 2v2M7 7h10" />
           </svg>
           <p className="text-gray-500 text-lg font-medium mb-2">No projects found</p>
           <p className="text-gray-400">Create your first project to get started</p>
@@ -491,41 +482,103 @@ const ProjectSection = ({
       )}
 
       {/* Proposal Details Modal */}
-      <AnimatePresence>
-        {selectedProposal && (
-          <ProposalDetailsModal
-            proposal={selectedProposal}
-            onClose={() => setSelectedProposal(null)}
-            onAccept={() => {
-              setSelectedRoleForProposal({
-                proposal: selectedProposal,
-                projectId: selectedProposal.projectId
-              });
-              setSelectedProposal(null);
-            }}
-            onDecline={() => {
-              updateProposalStatus.mutate({
-                proposalId: selectedProposal._id,
-                status: 'rejected'
-              });
-              setSelectedProposal(null);
-            }}
-            loading={updateProposalStatus.isLoading}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Role Selection Modal */}
-      {selectedRoleForProposal && (
-        <RoleSelectionModal
-          selectedRoleForProposal={selectedRoleForProposal}
-          projects={projects}
-          handleRoleSelection={handleRoleSelection}
-          onClose={() => setSelectedRoleForProposal(null)}
+      {selectedProposal && (
+        <ProposalDetailsModal
+          proposal={selectedProposal}
+          onClose={() => setSelectedProposal(null)}
+          onAccept={() => {
+            handleAccept(selectedProposal);
+            setSelectedProposal(null);
+          }}
+          onDecline={() => {
+            handleReject(selectedProposal._id);
+            setSelectedProposal(null);
+          }}
+          loading={updateProposalStatus.isLoading}
         />
       )}
     </div>
   );
 };
+
+// Proposal Section Component
+const ProposalSection = ({ proposals }) => (
+  <div className="space-y-4">
+    {proposals && proposals.length > 0 ? (
+      proposals.map(proposal => (
+        <motion.div
+          key={proposal._id}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {proposal.project?.title || proposal.projectId?.title}
+                  </h3>
+                  {proposal.appliedRole && (
+                    <div className="mt-1">
+                      <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-medium">
+                        Applied Role: {proposal.appliedRole.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="text-right">
+                  <span className="text-sm text-gray-500">
+                    {new Date(proposal.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </span>
+                </div>
+              </div>
+              
+              <p className="text-base text-gray-600 mt-2 line-clamp-2">
+                {proposal.coverLetter}
+              </p>
+              
+              <div className="flex items-center gap-4 mt-4">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  proposal.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                  proposal.status === 'pending' ? 'bg-blue-100 text-blue-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
+                </span>
+                
+                {proposal.appliedRole?.budget ? (
+                  <span className="text-base text-gray-500">
+                    Role Budget: ${proposal.appliedRole.budget}
+                  </span>
+                ) : (
+                  <span className="text-base text-gray-500">
+                    Project Budget: ${proposal.project?.budget || proposal.projectId?.budget}
+                  </span>
+                )}
+              </div>
+              
+              {proposal.status === 'accepted' && proposal.appliedRole?.filled && (
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  <span className="text-sm text-green-700">This role has been filled</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      ))
+    ) : (
+      <div className="text-center py-12">
+        <p className="text-gray-500 text-lg">No proposals found</p>
+      </div>
+    )}
+  </div>
+);
 
 export default WorkDashboard;

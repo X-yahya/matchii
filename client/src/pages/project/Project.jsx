@@ -3,11 +3,11 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import moment from 'moment';
-import { 
+import {
   FiArrowLeft,
-  FiDollarSign, 
-  FiClock, 
-  FiCalendar, 
+  FiDollarSign,
+  FiClock,
+  FiCalendar,
   FiUser,
   FiUsers,
   FiBriefcase,
@@ -26,6 +26,7 @@ export default function Project() {
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [coverLetter, setCoverLetter] = useState('');
   const [proposalError, setProposalError] = useState(null);
+  const [selectedRoleId, setSelectedRoleId] = useState(null);
   const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
   // Fetch project data
@@ -41,20 +42,24 @@ export default function Project() {
     enabled: !!project?.userId?._id
   });
 
-  // Check existing proposal
+  // In the checkProposal query:
   const { data: hasApplied } = useQuery({
     queryKey: ['proposalCheck', id, currentUser?._id],
-    queryFn: () => newRequest.get(`/proposals/check/${id}`).then((res) => res.data),
+    queryFn: () => newRequest.get(`/proposals/check/${id}`).then(res => res.data),
     enabled: !!currentUser?._id
   });
 
   // Proposal mutation
   const mutation = useMutation({
-    mutationFn: () => newRequest.post(`/proposals/${id}`, { coverLetter }),
+   mutationFn: () => newRequest.post(
+    `/proposals/${id}/roles/${selectedRoleId}`, // Updated endpoint
+    { coverLetter }
+  ),
     onSuccess: () => {
       queryClient.invalidateQueries(['proposalCheck', id, currentUser?._id]);
       setShowProposalModal(false);
       setCoverLetter('');
+      setSelectedRoleId(null);
     },
     onError: (err) => {
       setProposalError(err.response?.data?.message || 'Application failed. Please try again.');
@@ -68,15 +73,22 @@ export default function Project() {
     }
     setShowProposalModal(true);
   };
-
   const submitProposal = async () => {
     setProposalError(null);
-    
+
+    // Validate role selection
+    if (!selectedRoleId) {
+      setProposalError('Please select a role to apply for');
+      return;
+    }
+
+    // Validate cover letter length
     if (coverLetter.length < 150) {
       setProposalError('Cover letter must be at least 150 characters');
       return;
     }
 
+    // Submit the proposal
     mutation.mutate();
   };
 
@@ -93,7 +105,7 @@ export default function Project() {
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8 mt-8 flex justify-center">
-        <motion.div 
+        <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           className="rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"
@@ -105,7 +117,7 @@ export default function Project() {
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8 mt-8 text-center">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-red-50 border border-red-200 rounded-xl p-6"
@@ -125,7 +137,7 @@ export default function Project() {
   const proposalCount = project.proposals?.length || 0;
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -145,7 +157,7 @@ export default function Project() {
         </motion.div>
 
         {/* Project Header */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -167,7 +179,7 @@ export default function Project() {
             </span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">{project.title}</h1>
-          
+
           {/* Quick Stats */}
           <div className="flex flex-wrap gap-6 text-sm text-gray-600">
             <div className="flex items-center gap-2">
@@ -208,7 +220,7 @@ export default function Project() {
 
         {/* Required Roles Section */}
         {project.requiredRoles && project.requiredRoles.length > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
@@ -221,10 +233,10 @@ export default function Project() {
               </h2>
               <span className="text-sm text-gray-500">{filledRoles}/{totalRoles} filled</span>
             </div>
-            
+
             {/* Progress Bar */}
             <div className="w-full bg-gray-200 rounded-full h-3 mb-6">
-              <motion.div 
+              <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${totalRoles > 0 ? (filledRoles / totalRoles) * 100 : 0}%` }}
                 transition={{ delay: 0.6, duration: 0.8 }}
@@ -241,8 +253,8 @@ export default function Project() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 + index * 0.1 }}
                   className={`p-4 rounded-lg border-2 transition-all ${
-                    role.filled 
-                      ? 'border-green-200 bg-green-50' 
+                    role.filled
+                      ? 'border-green-200 bg-green-50'
                       : 'border-orange-200 bg-orange-50 hover:border-orange-300'
                   }`}
                 >
@@ -266,8 +278,8 @@ export default function Project() {
                   )}
                   <div className="mt-2 ml-7">
                     <span className={`text-xs px-2 py-1 rounded-full ${
-                      role.filled 
-                        ? 'bg-green-100 text-green-700' 
+                      role.filled
+                        ? 'bg-green-100 text-green-700'
                         : 'bg-orange-100 text-orange-700'
                     }`}>
                       {role.filled ? 'Filled' : 'Open'}
@@ -280,7 +292,7 @@ export default function Project() {
         )}
 
         {/* Project Details */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
@@ -299,7 +311,7 @@ export default function Project() {
 
         {/* Client Information */}
         {client && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
@@ -320,7 +332,7 @@ export default function Project() {
                   <p className="text-sm text-gray-600">Project Owner</p>
                   <div className="flex items-center gap-1 mt-1">
 
-          
+
                   </div>
                 </div>
               </div>
@@ -335,7 +347,7 @@ export default function Project() {
 
       {/* Application Sidebar */}
       <div className="w-full lg:w-96">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
@@ -359,7 +371,7 @@ export default function Project() {
                   <p className="text-sm text-gray-500">Days</p>
                 </div>
               </div>
-              
+
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Category:</span>
@@ -386,50 +398,28 @@ export default function Project() {
               </div>
             </div>
 
-            {/* Application Button */}
-            {currentUser?.isSeller ? (
-              project.userId?._id !== currentUser._id ? (
-                hasApplied ? (
-                  <motion.div 
-                    initial={{ scale: 0.95 }}
-                    animate={{ scale: 1 }}
-                    className="text-center p-4 bg-green-50 rounded-xl border border-green-200"
-                  >
-                    <FiCheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                    <p className="text-green-700 font-medium">Application Submitted</p>
-                    <p className="text-sm text-green-600 mt-1">
-                      Applied {moment().fromNow()}
-                    </p>
-                  </motion.div>
-                ) : (
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleApplyClick}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-4 rounded-xl font-medium transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-                  >
-                    <FiSend className="w-4 h-4" />
-                    Apply Now
-                  </motion.button>
-                )
-              ) : null
-            ) : (
-              <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <FiUser className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-600 mb-2">
-                  {currentUser ? "Only freelancers can apply" : "Login to apply for this project"}
-                </p>
-                {!currentUser && (
-                  <Link
-                    to={`/login?redirect=/projects/${id}`}
-                    className="text-blue-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
-                  >
-                    <FiUser className="w-4 h-4" />
-                    Login as Freelancer
-                  </Link>
-                )}
-              </div>
-            )}
+            {/* Application Button / Status */}
+            {currentUser?.isSeller && project.userId?._id !== currentUser._id ? (
+              hasApplied?.length > 0 ? (
+                <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <FiInfo className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                  <p className="text-blue-700 font-medium">Application Submitted</p>
+                  <p className="text-sm text-blue-600 mt-1">
+                    You've applied to {hasApplied.length} role{hasApplied.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleApplyClick}
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-4 rounded-xl font-medium transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                >
+                  <FiSend className="w-4 h-4" />
+                  Apply Now
+                </motion.button>
+              )
+            ) : null}
 
             {/* Project Guidelines */}
             <div className="bg-blue-50 rounded-xl p-4 space-y-3 border border-blue-100">
@@ -458,12 +448,12 @@ export default function Project() {
 
       {/* Enhanced Proposal Modal */}
       {showProposalModal && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         >
-          <motion.div 
+          <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
@@ -474,6 +464,49 @@ export default function Project() {
             </div>
 
             <div className="space-y-4">
+              {/* Role Selection Section */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Role *
+                </label>
+                <div className="space-y-3">
+                  {project.requiredRoles
+                    ?.filter(role => !role.filled)
+                    .map(role => (
+                      <div
+                        key={role._id}
+                        className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                          selectedRoleId === role._id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setSelectedRoleId(role._id)}
+                      >
+                        <div className={`w-5 h-5 rounded-full border flex-shrink-0 mt-0.5 ${
+                          selectedRoleId === role._id
+                            ? 'border-blue-500 bg-blue-500'
+                            : 'border-gray-300'
+                        }`} />
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start">
+                            <h3 className="font-medium text-gray-900">{role.name}</h3>
+                            <span className="font-semibold">{role.budget.toLocaleString()} dt</span>
+                          </div>
+                          {role.description && (
+                            <p className="text-sm text-gray-600 mt-1">{role.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+                {!project.requiredRoles?.some(role => !role.filled) && (
+                  <div className="text-center py-4 text-gray-500">
+                    No available roles to apply for
+                  </div>
+                )}
+              </div>
+
+              {/* Cover Letter Section */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Cover Letter *
@@ -482,7 +515,7 @@ export default function Project() {
                   value={coverLetter}
                   onChange={(e) => setCoverLetter(e.target.value)}
                   className="w-full h-40 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
-                  placeholder="Explain why you're the perfect fit for this project. Highlight your relevant experience, skills, and what makes you unique..."
+                  placeholder="Explain why you're the perfect fit for this role. Highlight your relevant experience, skills, and what makes you unique..."
                 />
                 <div className="mt-1 flex justify-between text-xs text-gray-500">
                   <span>Minimum 150 characters</span>
@@ -492,8 +525,9 @@ export default function Project() {
                 </div>
               </div>
 
+              {/* Error Display */}
               {proposalError && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="p-3 bg-red-50 text-red-600 rounded-lg text-sm border border-red-200 flex items-center gap-2"
@@ -503,12 +537,14 @@ export default function Project() {
                 </motion.div>
               )}
 
+              {/* Action Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <button
                   onClick={() => {
                     setShowProposalModal(false);
                     setProposalError(null);
                     setCoverLetter('');
+                    setSelectedRoleId(null);
                   }}
                   className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                   disabled={mutation.isPending}
@@ -519,12 +555,12 @@ export default function Project() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={submitProposal}
-                  disabled={mutation.isPending || coverLetter.length < 150}
+                  disabled={mutation.isPending || coverLetter.length < 150 || !selectedRoleId}
                   className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
                 >
                   {mutation.isPending ? (
                     <>
-                      <motion.div 
+                      <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         className="h-4 w-4 border-2 border-white border-t-transparent rounded-full"

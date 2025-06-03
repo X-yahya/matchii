@@ -28,6 +28,11 @@ const ProposalSchema = new Schema({
     enum: ['pending', 'accepted', 'rejected'],
     default: 'pending'
   },
+  appliedRoleId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project.requiredRoles',
+    required: true
+  },
   assignedRoleId: {
     type: Schema.Types.ObjectId,
     ref: 'Project.requiredRoles',

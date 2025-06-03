@@ -1,8 +1,3 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import RoleSelectionModal from './RoleSelectionModal'; // Make sure this import is correct
-
 const ProjectSection = ({ 
   projects, 
   updateProposalStatus, 
@@ -11,7 +6,6 @@ const ProjectSection = ({
 }) => {
   const queryClient = useQueryClient();
   const [selectedProposal, setSelectedProposal] = useState(null);
-  const [selectedRoleForProposal, setSelectedRoleForProposal] = useState(null);
   
   // Project status update mutation
   const updateProjectStatus = useMutation({
@@ -36,16 +30,21 @@ const ProjectSection = ({
     }
   };
 
-  // Handle role selection for proposal
-  const handleRoleSelection = (roleId) => {
-    updateProposalStatus.mutate({
-      proposalId: selectedRoleForProposal.proposal._id,
-      status: 'accepted',
-      roleId
-    });
-    setSelectedRoleForProposal(null);
-  };
-
+  // Handle proposal acceptance directly
+const handleAccept = (proposal) => {
+  updateProposalStatus.mutate({
+    proposalId: proposal._id,
+    status: 'accepted'
+  });
+  setSelectedProposal(null); // Close modal after accepting
+};
+const handleReject = (proposalId) => {
+  updateProposalStatus.mutate({
+    proposalId,
+    status: 'rejected'
+  });
+  setSelectedProposal(null); // Close modal after rejecting
+};
   return (
     <div className="space-y-6">
       {projects && projects.length > 0 ? (
@@ -54,7 +53,6 @@ const ProjectSection = ({
           const pending = project.proposals?.filter(p => p.status === 'pending') || [];
           const rejected = project.proposals?.filter(p => p.status === 'rejected') || [];
           const statusAction = getStatusAction(project.status);
-          const openRoles = project.requiredRoles?.filter(role => !role.filled) || [];
 
           return (
             <motion.div
@@ -193,7 +191,6 @@ const ProjectSection = ({
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{member.freelancerId?.username}</p>
                           <p className="text-sm text-gray-500">{member.freelancerId?.country}</p>
-                          {/* Show assigned role */}
                           <p className="text-xs text-gray-400">
                             Role: {member.role} • Joined: {new Date(member.joinedAt).toLocaleDateString()}
                           </p>
@@ -283,20 +280,11 @@ const ProjectSection = ({
                             {proposal.status === 'pending' && (
                               <div className="flex gap-2 ml-auto">
                                 <button
-                                  onClick={() => {
-                                    setSelectedRoleForProposal({
-                                      proposal,
-                                      projectId: project._id
-                                    });
-                                  }}
-                                  disabled={openRoles.length === 0}
-                                  className={`text-sm px-4 py-2 rounded-lg font-medium transition-colors ${
-                                    openRoles.length > 0
-                                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                  }`}
+                                  onClick={() => handleAccept(proposal)}
+                                  disabled={updateProposalStatus.isLoading}
+                                  className="text-sm px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
                                 >
-                                  {openRoles.length > 0 ? 'Accept' : 'No Roles Available'}
+                                  Accept
                                 </button>
                                 <button
                                   onClick={() => updateProposalStatus.mutate({
@@ -342,19 +330,21 @@ const ProjectSection = ({
       )}
 
       {/* Proposal Details Modal */}
-
-
-      {/* Role Selection Modal */}
-      {selectedRoleForProposal && (
-        <RoleSelectionModal
-          selectedRoleForProposal={selectedRoleForProposal}
-          projects={projects}
-          handleRoleSelection={handleRoleSelection}
-          onClose={() => setSelectedRoleForProposal(null)}
-        />
+      {selectedProposal && (
+        <ProposalDetailsModal
+  proposal={selectedProposal}
+  onClose={() => setSelectedProposal(null)}
+  onAccept={() => {
+    handleAccept(selectedProposal);
+    setSelectedProposal(null);
+  }}
+  onDecline={() => {
+    handleReject(selectedProposal._id);
+    setSelectedProposal(null);
+  }}
+  loading={updateProposalStatus.isLoading}
+/>
       )}
     </div>
   );
 };
-
-export default ProjectSection;
