@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Transition } from "@headlessui/react";
-import { FiMenu, FiX, FiUser, FiLogOut, FiMessageSquare, FiBriefcase, FiFilePlus, FiShoppingBag } from "react-icons/fi";
+import { FiMenu, FiX, FiUser, FiLogOut, FiMessageSquare, FiBriefcase, FiFilePlus, FiShoppingBag, FiUsers } from "react-icons/fi";
 import avatar from "../../assets/images/avatar.png";
 import newRequest from "../../utils/newRequest";
 
@@ -133,6 +133,14 @@ const Navbar = () => {
                               <FiFilePlus className="w-5 h-5 mr-3 text-gray-400" />
                               New Gig
                             </a>
+                            {/* Assigned Projects */}
+                            <a
+                              href="/projects/assigned"
+                              className="flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50"
+                            >
+                              <FiUsers className="w-5 h-5 mr-3 text-gray-400" />
+                              Assigned Projects
+                            </a>
                           </>
                         ) : (
                           <a
@@ -211,12 +219,21 @@ const Navbar = () => {
               Collaboration
             </a>
             {currentUser?.isSeller && (
-              <a
-                href="/mygigs"
-                className="block px-4 py-2.5 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
-                My Gigs
-              </a>
+              <>
+                <a
+                  href="/mygigs"
+                  className="block px-4 py-2.5 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  My Gigs
+                </a>
+                {/* Assigned Projects */}
+                <a
+                  href="/projects/assigned"
+                  className="block px-4 py-2.5 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Assigned Projects
+                </a>
+              </>
             )}
             {currentUser && !currentUser.isSeller && (
               <a

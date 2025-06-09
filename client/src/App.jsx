@@ -26,7 +26,7 @@ import MyProjects from "./pages/myProjects/myProjects";
 import Proposals from "./pages/proposal/Proposal";
 import ForgotPasswordEmail from "./pages/ForgotPassword/ForgotPassword" ;
 import EditGig from "./pages/editGig/EditGig";
-
+import AssignedProjects from "./pages/assignedProjects/AssignedProjects";
 
 
 function App() {
@@ -96,6 +96,7 @@ function App() {
         { path: "projects", element: <Projects /> },
         { path: "projects/:id", element: <Project /> },
         {path : "projects/myprojects" , element : <MyProjects />},
+        {path : "projects/assigned" , element : <AssignedProjects />},
         {path : "projects/add" , element : <AddProject />},
           {
         path: "/proposals",

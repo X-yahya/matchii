@@ -58,16 +58,15 @@ const userSchema = new Schema({
       default: false
     },
     sellerStats: {
-    completedProjects: { type: Number, default: 0 },
-    activeProjects: { type: Number, default: 0 },
+    completedProjects: { type: Number, default: 0 ,required: false },
+    activeProjects: { type: Number, default: 0 , required: false },
     clientsWorkedWith: [{ 
       type: mongoose.Schema.Types.ObjectId, 
       ref: 'User' 
     }],
-    successRate: { type: Number, default: "NULL" } // Percentage
+    successRate: { type: Number, default: 0 , required : false } // Change "NULL" to 0 or null
   },
   }, { timestamps: true });
-
 module.exports = mongoose.model("User", userSchema);
 
 

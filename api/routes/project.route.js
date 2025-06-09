@@ -11,7 +11,8 @@ const {
     assignFreelancerToRole,
     addRolesToProject,
     updateRole,
-    deleteRole
+    deleteRole , 
+    getMyAssignedProjects
 } = require("../controllers/project.controller");
 const verifyToken = require("../middleware/jwt");
 
@@ -19,6 +20,7 @@ const verifyToken = require("../middleware/jwt");
 router.post("/", verifyToken, createProject);
 router.get("/", getProjects);
 router.get("/myprojects", verifyToken, getMyProjects);
+router.get("/assigned", verifyToken, getMyAssignedProjects); // Add this new route
 router.get("/:id", getProject);
 router.delete("/:id", verifyToken, deleteProject);
 router.patch("/:id", verifyToken, updateProject);

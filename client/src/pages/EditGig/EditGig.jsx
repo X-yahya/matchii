@@ -4,14 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import newRequest from '../../utils/newRequest'; // Assuming this is your axios instance
 import upload from '../../utils/upload'; // Assuming this is your image upload utility
 import { FaMagic } from 'react-icons/fa'; // For the AI Enhance icon
-
-
-
+import { categories } from '../../data'; // Assuming you have a categories JSON file
 
 const EditGig = () => {
   // Get gig ID from URL parameters
   const { id } = useParams();
   // Get current user from local storage (assuming it's stored there)
+  // eslint-disable-next-line no-unused-vars
   const [currentUser] = useState(JSON.parse(localStorage.getItem('currentUser')));
   // React Router hook for navigation
   const navigate = useNavigate();
@@ -49,15 +48,17 @@ const EditGig = () => {
         description: data.description || '',
         coverImage: data.coverImage || '',
         gallery: data.gallery || [],
-        plans: data.plans && data.plans.length > 0
-          ? data.plans.map(plan => ({
-              ...plan,
-              revisions: plan.revisions || 1, // Default revisions to 1 if not set
-              features: plan.features && plan.features.length > 0
-                ? plan.features
-                : [''] // Ensure at least one empty feature input
-            }))
-          : [{ name: '', price: 0, deliveryDays: 0, revisions: 1, features: [''] }], // Default to one empty plan
+        plans:
+          data.plans && data.plans.length > 0
+            ? data.plans.map((plan) => ({
+                ...plan,
+                revisions: plan.revisions || 1, // Default revisions to 1 if not set
+                features:
+                  plan.features && plan.features.length > 0
+                    ? plan.features
+                    : [''], // Ensure at least one empty feature input
+              }))
+            : [{ name: '', price: 0, deliveryDays: 1, revisions: 1, features: [''] }], // Default to one empty plan
       });
     }
   }, [data]); // Depend on 'data' so this runs when data changes
@@ -137,9 +138,7 @@ const EditGig = () => {
       }
     } catch (err) {
       console.error('Error uploading image:', err);
-      // Use a custom message box instead of alert() for better UX
-      // For this example, I'll keep alert for simplicity, but a modal would be better
-      alert('Failed to upload image. Please try again.');
+      alert('Failed to upload image. Please try again.'); // Using alert for simplicity, consider a better UX
     } finally {
       setUploading(false); // Reset uploading state
     }
@@ -167,16 +166,61 @@ const EditGig = () => {
       queryClient.invalidateQueries(['myGigs']);
       navigate('/mygigs'); // Navigate back to my gigs page
     },
-    onError: (error) => {
+    onError: (err) => {
       // Display error message from API response or a generic one
-      alert(error?.response?.data?.message || 'Failed to update gig.');
-    }
+      alert(err?.response?.data?.message || 'Failed to update gig.');
+    },
   });
 
+  // --- AI Enhancement Function ---
+ // --- AI Enhancement Function ---
+  const handleEnhance = async () => {
+    if (!formData.description) {
+      setEnhancementError('Please provide a description before enhancing.');
+      return;
+    }
 
+    setEnhancing(true);
+    setEnhancementError(null); // Clear previous errors
 
+    try {
+      // Make an API call to your backend's AI enhancement endpoint
+      const res = await newRequest.put(`/gigs/enhance/${id}`); // Assuming your backend has an endpoint for AI enhancement
+      const enhancedData = res.data; // This should contain { description, plans }
 
-  // Handles form submission
+      // Update the form data with the enhanced values
+      setFormData((prevData) => ({
+        ...prevData,
+        description: enhancedData.description || prevData.description,
+        plans: enhancedData.plans || prevData.plans.map(plan => ({ ...plan, features: [''] })), // Ensure features are handled even if AI doesn't return them
+      }));
+
+      alert('Gig successfully enhanced by AI!');
+
+      // ✨ ADD THESE LINES TO INVALIDATE QUERIES ✨
+      queryClient.invalidateQueries(['gig', id]); // Invalidate the specific gig being edited
+      queryClient.invalidateQueries(['myGigs']); // Invalidate the user's list of gigs
+      queryClient.invalidateQueries(['gigs']); // Invalidate the general list of all gigs (for search page)
+      // If your search page uses more specific query keys (e.g., ['gigs', { category: '...' }]),
+      // you might need to invalidate ['gigs'] more generally or specific patterns.
+      // queryClient.invalidateQueries({ queryKey: ['gigs'] }); // This would invalidate all queries starting with 'gigs'
+
+ } catch (err) {
+ console.error('AI enhancement error:', err);
+ // Display the error message from the backend
+setEnhancementError(
+        err?.response?.data?.message || 'Failed to enhance gig with AI. Please try again later.'
+);
+} finally {
+// Keep the button disabled for a short period even after success/failure
+      // to prevent immediate re-clicks that would hit the rate limit again.
+setTimeout(() => {
+ setEnhancing(false);
+}, 5000); // Re-enable after 5 seconds (adjust as needed)
+}
+ };
+
+  // Handles form submission for saving the gig
   const handleSubmit = async (e) => {
     e.preventDefault(); // Prevent default form submission
 
@@ -187,9 +231,9 @@ const EditGig = () => {
     }
 
     // Clean up features array: remove empty feature strings before sending
-    const cleanedPlans = formData.plans.map(plan => ({
+    const cleanedPlans = formData.plans.map((plan) => ({
       ...plan,
-      features: plan.features.filter(feat => feat.trim() !== ''),
+      features: plan.features.filter((feat) => feat.trim() !== ''),
     }));
 
     // Trigger the mutation to update the gig
@@ -199,39 +243,38 @@ const EditGig = () => {
     });
   };
 
-  // --- Loading and Error States ---
-  if (isLoading) return (
-    <div className="flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>
-  );
-
-  if (error) return (
-    <div className="p-4 max-w-md mx-auto mt-8 text-center">
-      <div className="text-red-500 font-medium mb-2">
-        Error loading gig: {error.message}
+  // --- Loading and Error States for initial gig fetch ---
+  if (isLoading)
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
-      <button
-        onClick={() => navigate('/mygigs')}
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-      >
-        Back to My Gigs
-      </button>
-    </div>
-  );
+    );
+
+  if (error)
+    return (
+      <div className="p-4 max-w-md mx-auto mt-8 text-center">
+        <div className="text-red-500 font-medium mb-2">Error loading gig: {error.message}</div>
+        <button
+          onClick={() => navigate('/mygigs')}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          Back to My Gigs
+        </button>
+      </div>
+    );
 
   // --- Main Component Render ---
   return (
     <div className="add p-6 md:p-8 lg:p-10 bg-gray-50 min-h-screen">
       <div className="container mx-auto max-w-6xl">
-        
-        {/* <div className="flex flex-col md:flex-row justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Edit Gig</h1>
           <button
             onClick={handleEnhance}
-            disabled={enhancing}
+            disabled={enhancing || !formData.description} // Disable if no description
             className={`flex items-center gap-2 px-5 py-2.5 rounded-md ${
-              enhancing
+              enhancing || !formData.description
                 ? 'bg-purple-400 cursor-not-allowed'
                 : 'bg-purple-600 hover:bg-purple-700'
             } text-white font-semibold transition-colors shadow-md`}
@@ -239,7 +282,7 @@ const EditGig = () => {
             <FaMagic className="text-lg" />
             {enhancing ? 'Enhancing...' : 'AI Enhance'}
           </button>
-        </div> */}
+        </div>
 
         {enhancementError && (
           <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-lg shadow-sm border border-red-200">
@@ -275,15 +318,12 @@ const EditGig = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               >
                 <option value="">Select Category</option>
-                <option value="graphics">Graphics & Design</option>
-                <option value="programming">Programming & Tech</option>
-                <option value="digital">Digital Marketing</option>
-                <option value="video">Video & Animation</option>
-                <option value="writing">Writing & Translation</option>
-                <option value="music">Music & Audio</option>
-                <option value="business">Business</option>
-                <option value="data">Data</option>
-                <option value="photography">Photography</option>
+                {/* Dynamically render options from the categories array */}
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -304,8 +344,17 @@ const EditGig = () => {
                     className="absolute top-3 right-3 bg-red-600 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
                     title="Remove cover image"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -324,9 +373,7 @@ const EditGig = () => {
             </div>
 
             <div className="mb-6">
-              <label className="block text-gray-700 font-semibold mb-2">
-                Gallery Images
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Gallery Images</label>
               <div className="grid grid-cols-3 gap-4 mb-4">
                 {formData.gallery.map((img, index) => (
                   <div className="relative group" key={index}>
@@ -341,8 +388,17 @@ const EditGig = () => {
                       className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
                       title="Remove gallery image"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -482,8 +538,17 @@ const EditGig = () => {
                     className="mt-2 text-blue-600 hover:text-blue-800 flex items-center text-sm font-medium transition-colors"
                     onClick={() => addFeature(planIndex)}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 mr-1"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     Add Feature
                   </button>
@@ -496,8 +561,17 @@ const EditGig = () => {
               className="w-full py-2.5 px-4 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 flex items-center justify-center font-semibold transition-colors shadow-md"
               onClick={addPlan}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 mr-1"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                  clipRule="evenodd"
+                />
               </svg>
               Add New Plan
             </button>

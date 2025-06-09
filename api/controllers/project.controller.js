@@ -132,6 +132,55 @@ const getMyProjects = async (req, res, next) => {
     next(err);
   }
 };
+const getMyAssignedProjects = async (req, res, next) => {
+  try {
+    if (!req.isSeller) {
+      return next(createError(403, "Only freelancers can access this endpoint"));
+    }
+
+    // Find projects where the freelancer is part of the team
+    const projects = await Project.find({
+      'team.freelancerId': req.userId
+    })
+    .populate('userId', 'username image country')
+    .populate({
+      path: 'team.freelancerId',
+      select: 'username image country sellerStats'
+    })
+    .sort({ createdAt: -1 });
+
+    // Filter and enhance projects with freelancer-specific data
+    const enhancedProjects = projects.map(project => {
+      const projectObject = project.toObject();
+      
+      // Find the freelancer's role in this project
+      const myTeamMember = project.team.find(
+        member => member.freelancerId._id.toString() === req.userId
+      );
+      
+      // Find the role details if assigned to a specific role
+      let assignedRole = null;
+      if (myTeamMember && myTeamMember.assignedRoleId) {
+        assignedRole = project.requiredRoles.id(myTeamMember.assignedRoleId);
+      }
+
+      return {
+        ...projectObject,
+        myRole: myTeamMember ? myTeamMember.role : null,
+        assignedRole: assignedRole,
+        joinedAt: myTeamMember ? myTeamMember.joinedAt : null,
+        teamSize: project.team.length,
+        // Client information
+        client: project.userId
+      };
+    });
+
+    res.status(200).json(enhancedProjects);
+  } catch (err) {
+    next(err);
+  }
+};
+
 
 const updateProject = async (req, res, next) => {
     try {
@@ -375,5 +424,6 @@ module.exports = {
     assignFreelancerToRole,
     addRolesToProject,
     updateRole,
-    deleteRole
+    deleteRole , 
+    getMyAssignedProjects
 };
