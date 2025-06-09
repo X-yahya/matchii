@@ -21,11 +21,11 @@ import Profile from "./pages/profile/Profile";
 import VerifyOtp from "./pages/verification/VerifyOtp";
 import AddProject from "./pages/addProject/AddProject" ; 
 import Projects from "./pages/projects/Projects";
-import Project from "./pages/project/Project";
-import MyProjects from "./pages/myProjects/myProjects";
+import Project from "./pages/project/Project"
+import MyProjects from "./pages/myProjects/MyProjects"
 import Proposals from "./pages/proposal/Proposal";
 import ForgotPasswordEmail from "./pages/ForgotPassword/ForgotPassword" ;
-import EditGig from "./pages/editGig/EditGig";
+import EditGig from "./pages/EditGig/EditGig"
 import AssignedProjects from "./pages/assignedProjects/AssignedProjects";
 
 

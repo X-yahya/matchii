@@ -11,8 +11,11 @@ const GigCard = ({ item }) => {
     queryFn: () => newRequest.get(`/users/${item.userId}`).then(res => res.data),
   });
 
-  // Fetch real order statistics
-  const { data: ordersData } = [] ; 
+  // Fetch real order statistics for the current gig, filtering for 'completed' status
+  const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery({
+    queryKey: ['orders', item._id],
+    queryFn: () => newRequest.get(`/orders?gigId=${item._id}&status=completed`).then(res => res.data),
+  });
 
   // Fetch real review statistics
   const { data: reviewsData } = useQuery({
@@ -23,14 +26,14 @@ const GigCard = ({ item }) => {
   const renderRatingStars = (rating) => {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
-    
+
     return (
       <div className="flex items-center gap-0.5">
         {[...Array(5)].map((_, i) => (
           <FiStar
             key={i}
             className={`w-4 h-4 ${
-              i < fullStars ? 'text-yellow-400 fill-current' : 
+              i < fullStars ? 'text-yellow-400 fill-current' :
               (hasHalfStar && i === fullStars) ? 'text-yellow-400 fill-current' : 'text-gray-300'
             }`}
           />
@@ -40,15 +43,16 @@ const GigCard = ({ item }) => {
   };
 
   // Calculate rating statistics
-  const averageRating = reviewsData?.length 
+  const averageRating = reviewsData?.length
     ? reviewsData.reduce((sum, review) => sum + review.star, 0) / reviewsData.length
     : 0;
 
   const totalReviews = reviewsData?.length || 0;
-  const totalOrders = ordersData?.count || 0;
+  // Use the length of the fetched ordersData array for the count
+  const totalOrders = ordersData?.length || 0;
 
   return (
-    <motion.div 
+    <motion.div
       whileHover={{ scale: 1.02 }}
       className="group relative flex flex-col bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full"
     >
@@ -60,10 +64,10 @@ const GigCard = ({ item }) => {
           className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
         />
-        
+
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent" />
-        
+
         {/* Seller Badge */}
         <div className="absolute bottom-4 left-4 flex items-center gap-2">
           {sellerLoading ? (
@@ -108,20 +112,17 @@ const GigCard = ({ item }) => {
           <div className="flex items-center gap-2">
             <FiStar className="w-4 h-4 text-yellow-400" />
             <span>
-              {totalReviews > 0 
+              {totalReviews > 0
                 ? `${averageRating.toFixed(1)} (${totalReviews})`
                 : 'New Seller'}
             </span>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <FiClock className="w-4 h-4 text-blue-600" />
-            <span>{item.deliveryDays} Days Delivery</span>
-          </div>
-          
+
+
+
           <div className="flex items-center gap-2">
             <FiUser className="w-4 h-4 text-blue-600" />
-            <span>{totalOrders}+ Orders</span>
+            <span>{totalOrders} Orders</span>
           </div>
         </div>
 
@@ -135,19 +136,19 @@ const GigCard = ({ item }) => {
           <Link
             to={`/gig/${item._id}`}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg
-                     transition-colors flex items-center gap-2 text-sm"
+                      transition-colors flex items-center gap-2 text-sm"
           >
             View Details
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" 
-                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4"
+              fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
           </Link>
         </div>
       </div>
 
-      {(sellerLoading) && (
+      {(sellerLoading || ordersLoading) && (
         <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
