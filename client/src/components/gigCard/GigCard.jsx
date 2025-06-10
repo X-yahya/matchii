@@ -11,12 +11,6 @@ const GigCard = ({ item }) => {
     queryFn: () => newRequest.get(`/users/${item.userId}`).then(res => res.data),
   });
 
-  // Fetch real order statistics for the current gig, filtering for 'completed' status
-  const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery({
-    queryKey: ['orders', item._id],
-    queryFn: () => newRequest.get(`/orders?gigId=${item._id}&status=completed`).then(res => res.data),
-  });
-
   // Fetch real review statistics
   const { data: reviewsData } = useQuery({
     queryKey: ['reviews', item._id],
@@ -48,8 +42,9 @@ const GigCard = ({ item }) => {
     : 0;
 
   const totalReviews = reviewsData?.length || 0;
-  // Use the length of the fetched ordersData array for the count
-  const totalOrders = ordersData?.length || 0;
+  
+  // Use the sales field from the gig model instead of querying orders
+  const totalOrders = item.sales || 0;
 
   return (
     <motion.div
@@ -118,8 +113,6 @@ const GigCard = ({ item }) => {
             </span>
           </div>
 
-
-
           <div className="flex items-center gap-2">
             <FiUser className="w-4 h-4 text-blue-600" />
             <span>{totalOrders} Orders</span>
@@ -130,7 +123,7 @@ const GigCard = ({ item }) => {
           <div>
             <span className="text-xs text-gray-500">Starting at</span>
             <p className="text-xl font-semibold text-gray-900">
-              {item.price || '300'}
+              {item.price || '300'} DT
             </p>
           </div>
           <Link
@@ -148,7 +141,7 @@ const GigCard = ({ item }) => {
         </div>
       </div>
 
-      {(sellerLoading || ordersLoading) && (
+      {sellerLoading && (
         <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>

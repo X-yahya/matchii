@@ -26,9 +26,18 @@ const Navbar = () => {
     const handleScroll = () => setScrolled(window.scrollY > 0);
     window.addEventListener("scroll", handleScroll);
 
+    // Close dropdown if clicked outside
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+
     return () => {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("scroll", handleScroll);
+      document.removeEventListener("mousedown", handleClickOutside); // Cleanup
     };
   }, []);
 
@@ -36,7 +45,7 @@ const Navbar = () => {
     try {
       await newRequest.post("/auth/logout");
       localStorage.removeItem("currentUser");
-      window.dispatchEvent(new Event("storage"));
+      window.dispatchEvent(new Event("storage")); // Trigger storage event to update current user state
       navigate("/login");
     } catch (err) {
       console.error(err);
@@ -54,41 +63,41 @@ const Navbar = () => {
               className="text-xl font-semibold text-gray-900 hover:opacity-80 transition-opacity"
             >
               emporia
-
             </a>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-6">
-              <a
-                href="/projects"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg transition-colors"
-              >
-                Collaboration
-              </a>
-
               {!currentUser ? (
                 <div className="flex items-center space-x-4">
                   <a
-                    href="/login"
+                    href="/register"
                     className="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-lg transition-colors"
                   >
-                    Become a Seller
+                    Register
                   </a>
                   <button
-                    onClick={() => navigate("/register")}
+                    onClick={() => navigate("/login")}
                     className="bg-gradient-to-b from-blue-500 to-blue-600 text-white px-5 py-2.5 rounded-full hover:shadow-lg transition-all"
                   >
-                    Join
+                    Login
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center space-x-6">
-                  {!currentUser.isSeller && (
+                  {/* Conditional Link: Freelancer sees Browse Projects, Client sees Browse Gigs */}
+                  {currentUser.isSeller ? ( // If the user is a seller (freelancer)
                     <a
-                      href="/become-seller"
+                      href="/projects" // Link to browse projects
                       className="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-lg transition-colors"
                     >
-                      Become a Seller
+                      Browse Projects
+                    </a>
+                  ) : ( // If the user is not a seller (client)
+                    <a
+                      href="/gigs" // Link to browse gigs
+                      className="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Browse Gigs
                     </a>
                   )}
 
@@ -133,7 +142,7 @@ const Navbar = () => {
                               <FiFilePlus className="w-5 h-5 mr-3 text-gray-400" />
                               New Gig
                             </a>
-                            {/* Assigned Projects */}
+                            {/* Assigned Projects (for freelancers) */}
                             <a
                               href="/projects/assigned"
                               className="flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50"
@@ -212,12 +221,23 @@ const Navbar = () => {
           leaveTo="opacity-0 -translate-y-2"
         >
           <div className="md:hidden bg-white border-t border-gray-100 px-5 py-4 space-y-1">
-            <a
-              href="/projects"
-              className="block px-4 py-2.5 text-gray-700 rounded-lg hover:bg-gray-50"
-            >
-              Collaboration
-            </a>
+            {/* Mobile Conditional Link: Freelancer sees Browse Projects, Client sees Browse Gigs */}
+            {currentUser?.isSeller ? ( // If the user is a seller (freelancer)
+              <a
+                href="/projects" // Link to browse projects
+                className="block px-4 py-2.5 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Browse Projects
+              </a>
+            ) : ( // If the user is not a seller (client) or not logged in
+              <a
+                href="/gigs" // Link to browse gigs
+                className="block px-4 py-2.5 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Browse Gigs
+              </a>
+            )}
+
             {currentUser?.isSeller && (
               <>
                 <a
@@ -226,7 +246,7 @@ const Navbar = () => {
                 >
                   My Gigs
                 </a>
-                {/* Assigned Projects */}
+                {/* Assigned Projects (for freelancers) */}
                 <a
                   href="/projects/assigned"
                   className="block px-4 py-2.5 text-gray-700 rounded-lg hover:bg-gray-50"

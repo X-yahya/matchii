@@ -158,7 +158,7 @@ const ProjectCard = ({ project }) => {
           <div className="flex items-center gap-2">
             <FiDollarSign className="w-4 h-4 text-blue-600" />
             <div className="flex flex-col">
-              <span className="font-medium">${(project.budget || totalRoleBudget).toLocaleString()}</span>
+              <span className="font-medium">{(project.budget || totalRoleBudget).toLocaleString()}dt</span>
               {totalRoleBudget > 0 && project.budget !== totalRoleBudget && (
                 <span className="text-xs text-gray-500">Role total: {totalRoleBudget.toLocaleString()} dt</span>
               )}

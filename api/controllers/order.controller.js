@@ -74,6 +74,28 @@ const getOrders = async (req, res, next) => {
     }
 };
 
+const getOrdersByGig = async (req, res, next) => {
+    try {
+        const { gigId, status } = req.query;
+        
+        if (!gigId) {
+            return next(createError(400, "Gig ID is required"));
+        }
+
+        const filters = { gigId };
+        
+        // Add status filter if provided
+        if (status) {
+            filters.status = status;
+        }
+
+        const orders = await Order.find(filters);
+        res.status(200).json(orders);
+    } catch (err) {
+        next(err);
+    }
+};
+
 const updateOrderStatus = async (req, res, next) => {
     try {
         const order = await Order.findById(req.params.id);
@@ -161,6 +183,7 @@ const getPurchaseHistory = async (req, res, next) => {
 module.exports = {
     createOrder,
     getOrders,
+    getOrdersByGig,
     updateOrderStatus,
     checkOrder,
     getPurchaseHistory
