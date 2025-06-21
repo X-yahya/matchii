@@ -59,7 +59,7 @@ Tunisia’s freelance market is growing rapidly, but it lacks the digital infras
 
 Landing Page
 
-![Home](./screenshots/landingpage.png) 
+![Home](./screenshots/landingpage.jpeg) 
 
 ---
 
