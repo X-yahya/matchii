@@ -57,9 +57,9 @@ Tunisia’s freelance market is growing rapidly, but it lacks the digital infras
 
 ## 📸 Preview
 
-| Landing Page | Dashboard | Project Management |
-|--------------|-----------|--------------------|
-| ![Home](./screenshots/home.png) | ![Orders](./screenshots/orders.png) | ![Projects](./screenshots/projects.png) |
+Landing Page
+
+![Home](./screenshots/landingpage.png) 
 
 ---
 
@@ -67,7 +67,7 @@ Tunisia’s freelance market is growing rapidly, but it lacks the digital infras
 
 ```bash
 # Backend
-cd server
+cd api
 npm install
 npm run dev
 
